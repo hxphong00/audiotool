@@ -1,0 +1,44 @@
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python
+backend/venv/
+backend/.venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+
+# Backend audio storage (keep JSON metadata or directory, ignore generated MP3s)
+backend/app/storage/*.mp3
+!backend/app/storage/.gitkeep
+
+# Node & React Native / Expo
+node_modules/
+mobile-app/node_modules/
+.expo/
+mobile-app/.expo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# iOS Native Build artifacts
+mobile-app/ios/Pods/
+mobile-app/ios/build/
+*.mode1v3
+*.mode2v3
+*.moved-aside
+*.pbxuser
+*.perspectivev3
+
+# Logs
+*.log

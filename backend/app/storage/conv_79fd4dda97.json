@@ -1,0 +1,185 @@
+{
+  "conversation_id": "conv_79fd4dda97",
+  "title": "Cuộc gặp cuối tuần",
+  "total_duration": 9.137,
+  "audio_url": "http://192.168.1.220:8000/static/conv_79fd4dda97.mp3",
+  "audio_stream_url": "http://192.168.1.220:8000/api/audio/conv_79fd4dda97/stream",
+  "offline_filename": "conv_79fd4dda97.mp3",
+  "speakers": {
+    "David": {
+      "name": "David",
+      "voice": "en-US-AndrewNeural"
+    },
+    "Emily": {
+      "name": "Emily",
+      "voice": "en-US-AvaNeural"
+    }
+  },
+  "segments": [
+    {
+      "id": 1,
+      "speaker": "David",
+      "speaker_name": "David",
+      "text_en": "Hey Emily, do you want to grab coffee this afternoon?",
+      "text_vi": "Hey Emily, do you want to grab coffee this afternoon?",
+      "words": [
+        {
+          "word": "Hey",
+          "start": 0.113,
+          "end": 0.25
+        },
+        {
+          "word": "Emily",
+          "start": 0.263,
+          "end": 0.588
+        },
+        {
+          "word": "do",
+          "start": 0.887,
+          "end": 0.975
+        },
+        {
+          "word": "you",
+          "start": 0.988,
+          "end": 1.05
+        },
+        {
+          "word": "want",
+          "start": 1.062,
+          "end": 1.163
+        },
+        {
+          "word": "to",
+          "start": 1.175,
+          "end": 1.225
+        },
+        {
+          "word": "grab",
+          "start": 1.238,
+          "end": 1.488
+        },
+        {
+          "word": "coffee",
+          "start": 1.5,
+          "end": 1.788
+        },
+        {
+          "word": "this",
+          "start": 1.8,
+          "end": 1.975
+        },
+        {
+          "word": "afternoon",
+          "start": 1.988,
+          "end": 2.475
+        }
+      ],
+      "start": 0.0,
+      "end": 2.625
+    },
+    {
+      "id": 2,
+      "speaker": "Emily",
+      "speaker_name": "Emily",
+      "text_en": "Sure David, I would love to! What time?",
+      "text_vi": "Sure David, I would love to! What time?",
+      "words": [
+        {
+          "word": "Sure",
+          "start": 3.125,
+          "end": 3.488
+        },
+        {
+          "word": "David",
+          "start": 3.5,
+          "end": 3.912
+        },
+        {
+          "word": "I",
+          "start": 4.162,
+          "end": 4.213
+        },
+        {
+          "word": "would",
+          "start": 4.225,
+          "end": 4.375
+        },
+        {
+          "word": "love",
+          "start": 4.388,
+          "end": 4.7
+        },
+        {
+          "word": "to",
+          "start": 4.713,
+          "end": 5.025
+        },
+        {
+          "word": "What",
+          "start": 5.387,
+          "end": 5.625
+        },
+        {
+          "word": "time",
+          "start": 5.637,
+          "end": 6.137
+        }
+      ],
+      "start": 3.025,
+      "end": 6.287
+    },
+    {
+      "id": 3,
+      "speaker": "David",
+      "speaker_name": "David",
+      "text_en": "How about three PM at the downtown cafe?",
+      "text_vi": "How about three PM at the downtown cafe?",
+      "words": [
+        {
+          "word": "How",
+          "start": 6.787,
+          "end": 6.887
+        },
+        {
+          "word": "about",
+          "start": 6.899,
+          "end": 7.137
+        },
+        {
+          "word": "three",
+          "start": 7.15,
+          "end": 7.425
+        },
+        {
+          "word": "PM",
+          "start": 7.437,
+          "end": 7.824
+        },
+        {
+          "word": "at",
+          "start": 7.837,
+          "end": 7.912
+        },
+        {
+          "word": "the",
+          "start": 7.925,
+          "end": 7.987
+        },
+        {
+          "word": "downtown",
+          "start": 7.999,
+          "end": 8.449
+        },
+        {
+          "word": "cafe",
+          "start": 8.462,
+          "end": 8.987
+        }
+      ],
+      "start": 6.687,
+      "end": 9.137
+    }
+  ],
+  "local_audio_path": "app/storage/conv_79fd4dda97.mp3",
+  "local_json_path": "app/storage/conv_79fd4dda97.json"
+}

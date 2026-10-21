@@ -1,0 +1,64 @@
+{
+  "conversation_id": "conv_b069cb5070",
+  "title": "API Test Dialogue",
+  "total_duration": 2.512,
+  "audio_url": "http://test/static/conv_b069cb5070.mp3",
+  "audio_stream_url": "http://test/api/audio/conv_b069cb5070/stream",
+  "offline_filename": "conv_b069cb5070.mp3",
+  "speakers": {
+    "Alex": {
+      "name": "Alex",
+      "voice": "en-US-AndrewNeural"
+    },
+    "Sarah": {
+      "name": "Sarah",
+      "voice": "en-US-AvaNeural"
+    }
+  },
+  "segments": [
+    {
+      "id": 1,
+      "speaker": "Alex",
+      "speaker_name": "Alex",
+      "text_en": "Testing API.",
+      "text_vi": "Testing API.",
+      "words": [
+        {
+          "word": "Testing",
+          "start": 0.1,
+          "end": 0.438
+        },
+        {
+          "word": "API",
+          "start": 0.45,
+          "end": 0.925
+        }
+      ],
+      "start": 0.0,
+      "end": 1.075
+    },
+    {
+      "id": 2,
+      "speaker": "Sarah",
+      "speaker_name": "Sarah",
+      "text_en": "Works well!",
+      "text_vi": "Works well!",
+      "words": [
+        {
+          "word": "Works",
+          "start": 1.575,
+          "end": 1.95
+        },
+        {
+          "word": "well",
+          "start": 1.962,
+          "end": 2.362
+        }
+      ],
+      "start": 1.475,
+      "end": 2.512
+    }
+  ],
+  "local_audio_path": "/Users/hoangphong/Documents/audiotool/backend/app/storage/conv_b069cb5070.mp3",
+  "local_json_path": "/Users/hoangphong/Documents/audiotool/backend/app/storage/conv_b069cb5070.json"
+}

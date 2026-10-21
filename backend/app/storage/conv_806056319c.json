@@ -1,0 +1,357 @@
+{
+  "conversation_id": "conv_806056319c",
+  "title": "Morning Commute & Highway Traffic",
+  "total_duration": 20.35,
+  "audio_url": "http://localhost:8000/static/conv_806056319c.mp3",
+  "audio_stream_url": "http://localhost:8000/api/audio/conv_806056319c/stream",
+  "offline_filename": "conv_806056319c.mp3",
+  "speakers": {
+    "Alex": {
+      "name": "Alex",
+      "voice": "en-US-AndrewNeural"
+    },
+    "Sarah": {
+      "name": "Sarah",
+      "voice": "en-US-AvaNeural"
+    }
+  },
+  "segments": [
+    {
+      "id": 1,
+      "speaker": "Alex",
+      "speaker_name": "Alex",
+      "text_en": "Good morning Sarah, how is the traffic looking today?",
+      "text_vi": "Good morning Sarah, how is the traffic looking today?",
+      "words": [
+        {
+          "word": "Good",
+          "start": 0.1,
+          "end": 0.212
+        },
+        {
+          "word": "morning",
+          "start": 0.225,
+          "end": 0.487
+        },
+        {
+          "word": "Sarah",
+          "start": 0.5,
+          "end": 0.8
+        },
+        {
+          "word": "how",
+          "start": 1.188,
+          "end": 1.325
+        },
+        {
+          "word": "is",
+          "start": 1.337,
+          "end": 1.425
+        },
+        {
+          "word": "the",
+          "start": 1.438,
+          "end": 1.525
+        },
+        {
+          "word": "traffic",
+          "start": 1.538,
+          "end": 1.975
+        },
+        {
+          "word": "looking",
+          "start": 1.988,
+          "end": 2.237
+        },
+        {
+          "word": "today",
+          "start": 2.25,
+          "end": 2.6
+        }
+      ],
+      "start": 0.0,
+      "end": 2.75
+    },
+    {
+      "id": 2,
+      "speaker": "Sarah",
+      "speaker_name": "Sarah",
+      "text_en": "Good morning Alex! The highway is completely backed up due to construction.",
+      "text_vi": "Good morning Alex! The highway is completely backed up due to construction.",
+      "words": [
+        {
+          "word": "Good",
+          "start": 3.25,
+          "end": 3.45
+        },
+        {
+          "word": "morning",
+          "start": 3.462,
+          "end": 3.775
+        },
+        {
+          "word": "Alex",
+          "start": 3.787,
+          "end": 4.362
+        },
+        {
+          "word": "The",
+          "start": 4.725,
+          "end": 4.875
+        },
+        {
+          "word": "highway",
+          "start": 4.888,
+          "end": 5.387
+        },
+        {
+          "word": "is",
+          "start": 5.4,
+          "end": 5.563
+        },
+        {
+          "word": "completely",
+          "start": 5.575,
+          "end": 6.137
+        },
+        {
+          "word": "backed",
+          "start": 6.15,
+          "end": 6.438
+        },
+        {
+          "word": "up",
+          "start": 6.45,
+          "end": 6.6
+        },
+        {
+          "word": "due",
+          "start": 6.612,
+          "end": 6.737
+        },
+        {
+          "word": "to",
+          "start": 6.75,
+          "end": 6.887
+        },
+        {
+          "word": "construction",
+          "start": 6.9,
+          "end": 7.625
+        }
+      ],
+      "start": 3.15,
+      "end": 7.775
+    },
+    {
+      "id": 3,
+      "speaker": "Alex",
+      "speaker_name": "Alex",
+      "text_en": "That sounds terrible! Are you going to take the subway instead?",
+      "text_vi": "That sounds terrible! Are you going to take the subway instead?",
+      "words": [
+        {
+          "word": "That",
+          "start": 8.288,
+          "end": 8.375
+        },
+        {
+          "word": "sounds",
+          "start": 8.387,
+          "end": 8.613
+        },
+        {
+          "word": "terrible",
+          "start": 8.625,
+          "end": 9.087
+        },
+        {
+          "word": "Are",
+          "start": 9.5,
+          "end": 9.575
+        },
+        {
+          "word": "you",
+          "start": 9.588,
+          "end": 9.65
+        },
+        {
+          "word": "going",
+          "start": 9.663,
+          "end": 9.8
+        },
+        {
+          "word": "to",
+          "start": 9.812,
+          "end": 9.863
+        },
+        {
+          "word": "take",
+          "start": 9.875,
+          "end": 10.075
+        },
+        {
+          "word": "the",
+          "start": 10.088,
+          "end": 10.163
+        },
+        {
+          "word": "subway",
+          "start": 10.175,
+          "end": 10.563
+        },
+        {
+          "word": "instead",
+          "start": 10.575,
+          "end": 11.0
+        }
+      ],
+      "start": 8.175,
+      "end": 11.15
+    },
+    {
+      "id": 4,
+      "speaker": "Sarah",
+      "speaker_name": "Sarah",
+      "text_en": "Yes, definitely. It takes only twenty minutes to get to the downtown office.",
+      "text_vi": "Yes, definitely. It takes only twenty minutes to get to the downtown office.",
+      "words": [
+        {
+          "word": "Yes",
+          "start": 11.65,
+          "end": 12.25
+        },
+        {
+          "word": "definitely",
+          "start": 12.337,
+          "end": 12.988
+        },
+        {
+          "word": "It",
+          "start": 13.35,
+          "end": 13.525
+        },
+        {
+          "word": "takes",
+          "start": 13.538,
+          "end": 13.85
+        },
+        {
+          "word": "only",
+          "start": 13.938,
+          "end": 14.213
+        },
+        {
+          "word": "twenty",
+          "start": 14.225,
+          "end": 14.55
+        },
+        {
+          "word": "minutes",
+          "start": 14.563,
+          "end": 14.912
+        },
+        {
+          "word": "to",
+          "start": 14.925,
+          "end": 15.037
+        },
+        {
+          "word": "get",
+          "start": 15.05,
+          "end": 15.225
+        },
+        {
+          "word": "to",
+          "start": 15.238,
+          "end": 15.313
+        },
+        {
+          "word": "the",
+          "start": 15.325,
+          "end": 15.425
+        },
+        {
+          "word": "downtown",
+          "start": 15.438,
+          "end": 15.862
+        },
+        {
+          "word": "office",
+          "start": 15.875,
+          "end": 16.438
+        }
+      ],
+      "start": 11.55,
+      "end": 16.588
+    },
+    {
+      "id": 5,
+      "speaker": "Alex",
+      "speaker_name": "Alex",
+      "text_en": "Great idea. Let us catch up over coffee once you arrive!",
+      "text_vi": "Great idea. Let us catch up over coffee once you arrive!",
+      "words": [
+        {
+          "word": "Great",
+          "start": 17.088,
+          "end": 17.251
+        },
+        {
+          "word": "idea",
+          "start": 17.263,
+          "end": 17.688
+        },
+        {
+          "word": "Let",
+          "start": 18.101,
+          "end": 18.2
+        },
+        {
+          "word": "us",
+          "start": 18.213,
+          "end": 18.313
+        },
+        {
+          "word": "catch",
+          "start": 18.325,
+          "end": 18.575
+        },
+        {
+          "word": "up",
+          "start": 18.588,
+          "end": 18.713
+        },
+        {
+          "word": "over",
+          "start": 18.726,
+          "end": 18.901
+        },
+        {
+          "word": "coffee",
+          "start": 18.913,
+          "end": 19.325
+        },
+        {
+          "word": "once",
+          "start": 19.338,
+          "end": 19.588
+        },
+        {
+          "word": "you",
+          "start": 19.6,
+          "end": 19.713
+        },
+        {
+          "word": "arrive",
+          "start": 19.725,
+          "end": 20.2
+        }
+      ],
+      "start": 16.988,
+      "end": 20.35
+    }
+  ],
+  "local_audio_path": "/Users/hoangphong/Documents/audiotool/backend/app/storage/conv_806056319c.mp3",
+  "local_json_path": "/Users/hoangphong/Documents/audiotool/backend/app/storage/conv_806056319c.json"
+}
