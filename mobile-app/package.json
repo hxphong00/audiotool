@@ -23,7 +23,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "npx tsx --tsconfig tests/tsconfig.test.json --test tests/learning_and_playback.test.ts"
   },
   "private": true
 }
