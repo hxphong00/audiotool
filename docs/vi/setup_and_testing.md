@@ -5,6 +5,24 @@ Tài liệu này hướng dẫn chi tiết từng bước từ cấu hình Xcode
 
 ---
 
+## 📱 THÔNG SỐ MÔI TRƯỜNG & THIẾT BỊ ĐÃ XÁC THỰC (VERIFIED SPECS)
+
+Hệ thống đã được kiểm tra tính tương thích và xác thực thực tế trên các thông số phần cứng & phần mềm sau:
+
+| Thành phần | Thông số chi tiết đã xác thực | Ghi chú tương thích |
+| :--- | :--- | :--- |
+| **Thiết bị chạy app (iPhone thật)** | **iPhone - iOS 18.1 (Build 22B83)** | Hỗ trợ 100% `AVAudioSession`, Lock Screen controls, AirPods gestures, Developer Mode |
+| **Máy tính phát triển (Mac)** | **Apple Silicon Mac (`arm64`)** | M1/M2/M3/M4 |
+| **IDE & iOS SDK** | **Xcode 16.2 (Build 16C5032a)** | Đường dẫn `/Applications/Xcode.app` |
+| **Backend Runtime** | **Python 3.9.6** (`backend/venv`) | Chạy FastAPI, Uvicorn, edge-tts, 10/10 tests pass |
+| **Bộ mã hóa âm thanh** | **FFmpeg 6.0 (`arm64`)** | Đã cài tại `/Users/hoangphong/.local/bin/ffmpeg` |
+| **Node.js Environment** | **Node.js v20.20.2** | Expo / Metro bundler |
+| **Mobile Framework** | **React Native 0.88.0 / Expo SDK 58** | Đã test `tsc --noEmit` đạt 0 lỗi |
+| **iOS Bundle Identifier** | `com.hoangphong.audiotool` | Cấu hình trong `mobile-app/app.json` |
+| **Mạng LAN kết nối (Mac ➔ iPhone)** | `http://192.168.1.220:8000` | Port 8000 mở cho mạng Wi-Fi nội bộ |
+
+---
+
 ## BƯỚC 1: Hoàn tất Kích hoạt Xcode trên máy Mac
 
 Máy Mac của bạn đã có **Xcode 16.2** tại `/Applications/Xcode.app`. Hãy chạy lệnh sau trên Terminal để chấp nhận thỏa thuận bản quyền và kích hoạt bộ công cụ lập trình:

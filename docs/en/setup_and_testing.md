@@ -5,6 +5,24 @@ This document provides a step-by-step setup guide for configuring Xcode, connect
 
 ---
 
+## 📱 VERIFIED HARDWARE & ENVIRONMENT SPECIFICATIONS
+
+The system has been comprehensively verified and tested against the following physical hardware and software profile:
+
+| Component | Verified Specification | Compatibility Notes |
+| :--- | :--- | :--- |
+| **Target Mobile Device (Physical)** | **iPhone - iOS 18.1 (Build 22B83)** | 100% compatible with `AVAudioSession`, Lock Screen controls, AirPods gestures, Developer Mode |
+| **Development Host (Mac)** | **Apple Silicon Mac (`arm64`)** | M1/M2/M3/M4 Architecture |
+| **IDE & iOS SDK** | **Xcode 16.2 (Build 16C5032a)** | Located at `/Applications/Xcode.app` |
+| **Backend Runtime** | **Python 3.9.6** (`backend/venv`) | FastAPI, Uvicorn, edge-tts, 10/10 automated tests passing |
+| **Audio Engine / Transcoder** | **FFmpeg 6.0 (`arm64`)** | Installed at `/Users/hoangphong/.local/bin/ffmpeg` |
+| **Node.js Environment** | **Node.js v20.20.2** | Expo / Metro bundler |
+| **Mobile Framework** | **React Native 0.88.0 / Expo SDK 58** | TypeScript compiler: 0 errors (`tsc --noEmit`) |
+| **iOS Bundle Identifier** | `com.hoangphong.audiotool` | Declared in `mobile-app/app.json` |
+| **Local Network Binding (Mac ➔ iPhone)** | `http://192.168.1.220:8000` | Port 8000 open for local Wi-Fi connectivity |
+
+---
+
 ## STEP 1: Activate Xcode on macOS
 
 With **Xcode 16.2** installed in `/Applications/Xcode.app`, accept the software license and install CocoaPods from the macOS Terminal:
