@@ -1,32 +1,56 @@
+import asyncio
 import glob
 import json
 import os
+import re
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.api.range_streaming import stream_file_with_range
 from app.services.pipeline import process_dialogue
-from app.services.translation_service import translate_text
+from app.services.translation_service import lookup_word_details
 
 router = APIRouter()
 
 STORAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "storage"))
+SAFE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def _validate_conversation_id(conversation_id: str) -> str:
+    if not conversation_id or not SAFE_ID_PATTERN.match(conversation_id):
+        raise HTTPException(status_code=400, detail="Invalid conversation_id format")
+    return conversation_id
+
+
+def _rewrite_urls_for_request(data: dict, request: Request) -> dict:
+    base_url = str(request.base_url).rstrip("/")
+    conv_id = data.get("conversation_id", "")
+    offline_filename = data.get("offline_filename") or f"{conv_id}.mp3"
+    updated = dict(data)
+    updated["audio_url"] = f"{base_url}/static/{offline_filename}"
+    updated["audio_stream_url"] = f"{base_url}/api/audio/{conv_id}/stream"
+    updated.pop("local_audio_path", None)
+    updated.pop("local_json_path", None)
+    return updated
+
 
 class DialogueCreateRequest(BaseModel):
     title: Optional[str] = "English Conversation"
     script: str
     silence_sec: Optional[float] = 0.4
 
+
 @router.get("/health")
 async def health():
     return {"status": "ok"}
 
+
 @router.post("/dialogue/create")
 async def create_dialogue(req: DialogueCreateRequest, request: Request):
-    if not req.script.strip():
+    if not req.script or not req.script.strip():
         raise HTTPException(status_code=400, detail="Script cannot be empty")
-        
+
     base_url = str(request.base_url).rstrip("/")
     try:
         data = await process_dialogue(
@@ -34,53 +58,70 @@ async def create_dialogue(req: DialogueCreateRequest, request: Request):
             title=req.title or "English Conversation",
             storage_dir=STORAGE_DIR,
             base_url=base_url,
-            silence_sec=req.silence_sec or 0.4
+            silence_sec=req.silence_sec if req.silence_sec is not None else 0.4,
         )
-        return data
+        return _rewrite_urls_for_request(data, request)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/dialogue/{conversation_id}")
-async def get_dialogue(conversation_id: str):
-    json_path = os.path.join(STORAGE_DIR, f"{conversation_id}.json")
+async def get_dialogue(conversation_id: str, request: Request):
+    safe_id = _validate_conversation_id(conversation_id)
+    json_path = os.path.join(STORAGE_DIR, f"{safe_id}.json")
     if not os.path.exists(json_path):
         raise HTTPException(status_code=404, detail="Conversation not found")
-        
+
     with open(json_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    return _rewrite_urls_for_request(data, request)
+
 
 @router.get("/dialogue")
-async def list_dialogues():
+async def list_dialogues(request: Request):
+    base_url = str(request.base_url).rstrip("/")
     json_files = glob.glob(os.path.join(STORAGE_DIR, "*.json"))
+    # Sort newest first by modification time
+    json_files.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+
     dialogues = []
     for jf in json_files:
         try:
             with open(jf, "r", encoding="utf-8") as f:
                 data = json.load(f)
+                conv_id = data.get("conversation_id")
+                if not conv_id:
+                    continue
+                offline_filename = data.get("offline_filename") or f"{conv_id}.mp3"
                 dialogues.append({
-                    "conversation_id": data.get("conversation_id"),
-                    "title": data.get("title"),
-                    "total_duration": data.get("total_duration"),
+                    "conversation_id": conv_id,
+                    "title": data.get("title", "English Conversation"),
+                    "created_at": data.get("created_at"),
+                    "total_duration": data.get("total_duration", 0.0),
                     "segments_count": len(data.get("segments", [])),
-                    "audio_url": data.get("audio_url")
+                    "audio_url": f"{base_url}/static/{offline_filename}",
+                    "audio_stream_url": f"{base_url}/api/audio/{conv_id}/stream",
                 })
         except Exception:
             continue
     return {"dialogues": dialogues}
 
+
 @router.get("/audio/{conversation_id}/stream")
 async def stream_dialogue_audio(conversation_id: str, request: Request):
-    mp3_path = os.path.join(STORAGE_DIR, f"{conversation_id}.mp3")
+    safe_id = _validate_conversation_id(conversation_id)
+    mp3_path = os.path.join(STORAGE_DIR, f"{safe_id}.mp3")
     return stream_file_with_range(mp3_path, request, media_type="audio/mpeg")
 
+
 @router.get("/dictionary/lookup")
-async def lookup_word(word: str):
-    clean_word = word.strip().strip(",.?!;:\'\"()[]{}")
-    if not clean_word:
+async def lookup_word(word: str, context: Optional[str] = ""):
+    if not word or not word.strip():
         raise HTTPException(status_code=400, detail="Word cannot be empty")
-        
-    meaning_vi = translate_text(clean_word, target="vi")
-    return {
-        "word": clean_word,
-        "translation_vi": meaning_vi
-    }
+
+    details = await asyncio.to_thread(lookup_word_details, word, context or "")
+    if not details.get("word"):
+        raise HTTPException(status_code=400, detail="Word cannot be empty")
+    return details
