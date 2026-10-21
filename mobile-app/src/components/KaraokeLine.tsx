@@ -1,21 +1,17 @@
 import React from 'react';
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { DialogueSegment } from '../types';
+import { WordPressable } from './WordPressable';
 
 interface KaraokeLineProps {
   segment: DialogueSegment;
   currentTime: number;
   isActive: boolean;
-  onWordPress: (word: string) => void;
-  onLinePress: () => void;
+  onWordPress: (word: string, segment: DialogueSegment) => void;
+  onLinePress: (segment: DialogueSegment) => void;
 }
 
-export const KaraokeLine: React.FC<KaraokeLineProps> = ({
+const KaraokeLineComponent: React.FC<KaraokeLineProps> = ({
   segment,
   currentTime,
   isActive,
@@ -23,13 +19,9 @@ export const KaraokeLine: React.FC<KaraokeLineProps> = ({
   onLinePress,
 }) => {
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={onLinePress}
-      style={[
-        styles.container,
-        isActive && styles.activeContainer,
-      ]}
+    <Pressable
+      onPress={() => onLinePress(segment)}
+      style={[styles.container, isActive && styles.activeContainer]}
     >
       <View style={styles.speakerRow}>
         <View style={[styles.speakerBadge, isActive && styles.activeSpeakerBadge]}>
@@ -37,45 +29,54 @@ export const KaraokeLine: React.FC<KaraokeLineProps> = ({
             {segment.speaker_name || segment.speaker}
           </Text>
         </View>
+        <Text style={styles.timestampText}>
+          {segment.start.toFixed(1)}s
+        </Text>
       </View>
 
-      {/* English Words with Word-Level Sync */}
+      {/* English Words with Real-Time WordBoundary Sync */}
       <View style={styles.wordsRow}>
         {segment.words.map((w, index) => {
           const isWordActive =
-            currentTime >= w.start && currentTime < w.end;
+            isActive && currentTime >= w.start && currentTime <= w.end + 0.04;
 
           return (
-            <TouchableOpacity
-              key={`${w.word}_${index}`}
-              activeOpacity={0.6}
-              onPress={() => onWordPress(w.word)}
-              style={[
-                styles.wordTouch,
-                isWordActive && styles.activeWordTouch,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.wordText,
-                  isActive ? styles.sentenceActiveWord : styles.inactiveWord,
-                  isWordActive && styles.activeWordText,
-                ]}
-              >
-                {w.word}{' '}
-              </Text>
-            </TouchableOpacity>
+            <WordPressable
+              key={`${segment.id}_${index}_${w.word}`}
+              word={w.word}
+              isSentenceActive={isActive}
+              isWordActive={isWordActive}
+              onPress={(tappedWord) => onWordPress(tappedWord, segment)}
+            />
           );
         })}
       </View>
 
-      {/* Vietnamese Translation */}
-      <Text style={[styles.translationText, isActive && styles.activeTranslationText]}>
+      {/* Vietnamese Bilingual Subtitle */}
+      <Text
+        style={[
+          styles.translationText,
+          isActive && styles.activeTranslationText,
+        ]}
+      >
         {segment.text_vi}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
+
+/**
+ * Memoized so inactive sentences NEVER re-render during high-frequency progress updates.
+ */
+export const KaraokeLine = React.memo(
+  KaraokeLineComponent,
+  (prev, next) => {
+    if (prev.isActive !== next.isActive) return false;
+    if (prev.segment !== next.segment) return false;
+    if (!next.isActive) return true;
+    return Math.abs(prev.currentTime - next.currentTime) < 0.02;
+  }
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -97,6 +98,9 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   speakerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
   },
   speakerBadge: {
@@ -118,43 +122,25 @@ const styles = StyleSheet.create({
   activeSpeakerText: {
     color: '#1DB954',
   },
+  timestampText: {
+    fontSize: 11,
+    color: '#666666',
+    fontWeight: '500',
+  },
   wordsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     marginBottom: 10,
   },
-  wordTouch: {
-    paddingVertical: 2,
-    paddingHorizontal: 1,
-    borderRadius: 4,
-  },
-  activeWordTouch: {
-    backgroundColor: '#1DB954',
-  },
-  wordText: {
-    fontSize: 20,
-    lineHeight: 30,
-    fontWeight: '600',
-  },
-  sentenceActiveWord: {
-    color: '#FFFFFF',
-  },
-  inactiveWord: {
-    color: '#777777',
-  },
-  activeWordText: {
-    color: '#000000',
-    fontWeight: '800',
-  },
   translationText: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#555555',
+    color: '#5A5A5A',
     fontStyle: 'italic',
   },
   activeTranslationText: {
-    color: '#B3B3B3',
+    color: '#D0D0D0',
     fontWeight: '500',
   },
 });

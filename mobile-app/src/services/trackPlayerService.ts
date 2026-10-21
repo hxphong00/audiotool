@@ -25,12 +25,13 @@ let lastUpdatedSpeaker = '';
 let isPlayerInitialized = false;
 let serviceSubscriptions: EmitterSubscription[] = [];
 
-// Fallback state when running in preview/Expo Go without native RNTP compiled
+// Fallback state when running in preview/Expo Go/Web without native RNTP compiled
 let fallbackIsPlaying = false;
 let fallbackPosition = 0;
 let fallbackDuration = 0;
 let fallbackRate = 1.0;
 let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+let webAudioElement: any = null;
 const fallbackListeners = new Set<() => void>();
 
 function notifyFallbackListeners() {
@@ -41,11 +42,22 @@ function startFallbackTimer() {
   if (fallbackTimer) clearInterval(fallbackTimer);
   fallbackTimer = setInterval(() => {
     if (fallbackIsPlaying) {
-      fallbackPosition += 0.05 * fallbackRate;
-      if (fallbackDuration > 0 && fallbackPosition >= fallbackDuration) {
-        fallbackPosition = 0;
-        fallbackIsPlaying = false;
-        if (fallbackTimer) clearInterval(fallbackTimer);
+      if (webAudioElement && typeof webAudioElement.currentTime === 'number') {
+        fallbackPosition = webAudioElement.currentTime;
+        if (webAudioElement.duration && !Number.isNaN(webAudioElement.duration)) {
+          fallbackDuration = webAudioElement.duration;
+        }
+        if (webAudioElement.ended) {
+          fallbackIsPlaying = false;
+          fallbackPosition = 0;
+        }
+      } else {
+        fallbackPosition += 0.05 * fallbackRate;
+        if (fallbackDuration > 0 && fallbackPosition >= fallbackDuration) {
+          fallbackPosition = 0;
+          fallbackIsPlaying = false;
+          if (fallbackTimer) clearInterval(fallbackTimer);
+        }
       }
       notifyFallbackListeners();
     }
@@ -209,6 +221,18 @@ export async function loadTrackIntoPlayer(params: {
     fallbackPosition = 0;
     fallbackDuration = params.duration || 15;
     if (params.rate) fallbackRate = params.rate;
+    try {
+      const GlobalAudio = (globalThis as any)?.Audio;
+      if (typeof GlobalAudio === 'function') {
+        if (webAudioElement) {
+          webAudioElement.pause();
+        }
+        webAudioElement = new GlobalAudio(params.url);
+        webAudioElement.playbackRate = fallbackRate;
+      }
+    } catch {
+      webAudioElement = null;
+    }
     notifyFallbackListeners();
     return;
   }
@@ -233,6 +257,11 @@ export async function loadTrackIntoPlayer(params: {
 export async function playAudio(): Promise<void> {
   if (!TrackPlayerRef) {
     fallbackIsPlaying = true;
+    try {
+      await webAudioElement?.play?.();
+    } catch {
+      // Ignore autoplay error
+    }
     startFallbackTimer();
     notifyFallbackListeners();
     return;
@@ -243,6 +272,11 @@ export async function playAudio(): Promise<void> {
 export async function pauseAudio(): Promise<void> {
   if (!TrackPlayerRef) {
     fallbackIsPlaying = false;
+    try {
+      webAudioElement?.pause?.();
+    } catch {
+      // Ignore
+    }
     notifyFallbackListeners();
     return;
   }
@@ -253,6 +287,13 @@ export async function seekPlayerTo(seconds: number): Promise<void> {
   const clamped = Math.max(0, seconds);
   if (!TrackPlayerRef) {
     fallbackPosition = fallbackDuration > 0 ? Math.min(fallbackDuration, clamped) : clamped;
+    if (webAudioElement) {
+      try {
+        webAudioElement.currentTime = fallbackPosition;
+      } catch {
+        // Ignore
+      }
+    }
     notifyFallbackListeners();
     return;
   }
@@ -262,6 +303,13 @@ export async function seekPlayerTo(seconds: number): Promise<void> {
 export async function setPlayerRate(rate: number): Promise<void> {
   fallbackRate = rate;
   if (!TrackPlayerRef) {
+    if (webAudioElement) {
+      try {
+        webAudioElement.playbackRate = rate;
+      } catch {
+        // Ignore
+      }
+    }
     notifyFallbackListeners();
     return;
   }

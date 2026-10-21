@@ -1,8 +1,9 @@
 import { registerRootComponent } from 'expo';
 
 import App from './App';
+import { registerTrackPlayerService } from './src/services/trackPlayerService';
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
+// Register background playback service for iOS AVAudioSession, Lock Screen & AirPods
+registerTrackPlayerService();
+
 registerRootComponent(App);

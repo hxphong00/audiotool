@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  LayoutChangeEvent,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,11 +17,13 @@ interface AudioControlsProps {
   onSeekToStartOfSegment: () => void;
   onSeekForward: () => void;
   onToggleRate: () => void;
+  onSeekToPosition?: (seconds: number) => void;
 }
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
+export function formatTimeMMSS(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds || 0));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
@@ -32,37 +36,59 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
   onSeekToStartOfSegment,
   onSeekForward,
   onToggleRate,
+  onSeekToPosition,
 }) => {
+  const [barWidth, setBarWidth] = useState(0);
   const progressPercent = duration > 0 ? (position / duration) * 100 : 0;
+
+  function handleBarLayout(e: LayoutChangeEvent) {
+    setBarWidth(e.nativeEvent.layout.width);
+  }
+
+  function handleBarPress(locationX: number) {
+    if (!onSeekToPosition || barWidth <= 0 || duration <= 0) return;
+    const ratio = Math.min(1, Math.max(0, locationX / barWidth));
+    onSeekToPosition(ratio * duration);
+  }
 
   return (
     <View style={styles.container}>
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
+      {/* Interactive Progress Bar */}
+      <Pressable
+        style={styles.progressContainer}
+        onLayout={handleBarLayout}
+        onPress={(e) => handleBarPress(e.nativeEvent.locationX)}
+      >
         <View style={styles.trackBackground}>
-          <View style={[styles.trackFill, { width: `${Math.min(100, Math.max(0, progressPercent))}%` }]} />
+          <View
+            style={[
+              styles.trackFill,
+              { width: `${Math.min(100, Math.max(0, progressPercent))}%` },
+            ]}
+          />
         </View>
         <View style={styles.timeRow}>
-          <Text style={styles.timeText}>{formatTime(position)}</Text>
-          <Text style={styles.timeText}>{formatTime(duration)}</Text>
+          <Text style={styles.timeText}>{formatTimeMMSS(position)}</Text>
+          <Text style={styles.timeHintText}>Chạm câu hoặc thanh để tua</Text>
+          <Text style={styles.timeText}>{formatTimeMMSS(duration)}</Text>
         </View>
-      </View>
+      </Pressable>
 
-      {/* Buttons Row */}
+      {/* Main Transport Row */}
       <View style={styles.controlsRow}>
         {/* Speed toggle */}
         <TouchableOpacity style={styles.rateBtn} onPress={onToggleRate}>
           <Text style={styles.rateBtnText}>{rate}x</Text>
         </TouchableOpacity>
 
-        {/* Rewind to start of current sentence */}
+        {/* Smart Rewind: 1 tap = start of current sentence, 2 taps = previous sentence */}
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={onSeekToStartOfSegment}
           activeOpacity={0.7}
         >
           <Text style={styles.iconText}>⏮</Text>
-          <Text style={styles.iconSubText}>Đầu câu</Text>
+          <Text style={styles.iconSubText}>Đầu câu / Lùi</Text>
         </TouchableOpacity>
 
         {/* Main Play / Pause */}
@@ -74,14 +100,14 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
           <Text style={styles.playPauseText}>{isPlaying ? '⏸' : '▶'}</Text>
         </TouchableOpacity>
 
-        {/* Forward 5s */}
+        {/* Next sentence */}
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={onSeekForward}
           activeOpacity={0.7}
         >
-          <Text style={styles.iconText}>+5s</Text>
-          <Text style={styles.iconSubText}>Tua tới</Text>
+          <Text style={styles.iconText}>⏭</Text>
+          <Text style={styles.iconSubText}>Câu tiếp</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -95,15 +121,16 @@ const styles = StyleSheet.create({
     borderTopColor: '#282828',
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 28,
+    paddingBottom: 24,
   },
   progressContainer: {
-    marginBottom: 10,
+    marginBottom: 8,
+    paddingVertical: 4,
   },
   trackBackground: {
-    height: 4,
+    height: 6,
     backgroundColor: '#3E3E3E',
-    borderRadius: 2,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   trackFill: {
@@ -113,24 +140,31 @@ const styles = StyleSheet.create({
   timeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 6,
   },
   timeText: {
     color: '#8A8A8A',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  timeHintText: {
+    color: '#555555',
+    fontSize: 11,
   },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    marginTop: 6,
+    marginTop: 4,
   },
   rateBtn: {
     backgroundColor: '#242424',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 16,
+    minWidth: 54,
+    alignItems: 'center',
   },
   rateBtnText: {
     color: '#FFFFFF',
@@ -143,13 +177,13 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   iconText: {
-    fontSize: 20,
+    fontSize: 22,
     color: '#FFFFFF',
     fontWeight: '700',
   },
   iconSubText: {
     fontSize: 10,
-    color: '#888888',
+    color: '#999999',
     marginTop: 2,
   },
   playPauseBtn: {
