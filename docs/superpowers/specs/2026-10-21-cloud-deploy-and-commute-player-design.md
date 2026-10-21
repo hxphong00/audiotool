@@ -1,7 +1,7 @@
 # SPECIFICATION & SYSTEM DESIGN DOC
 # Title: Cloud Deployment & Dual Commute Playback for AudioTool
 **Date:** 2026-10-21  
-**Status:** Approved for Implementation  
+**Status:** Approved for Implementation (v2 - Expanded with Commute UX & Critical Caveats)  
 **Target Hardware:** iPhone 13 (Standard / Bản tiêu chuẩn) — iOS 18.1 (Build 22B83)  
 **Host Machine:** Apple Silicon Mac (`arm64`), Xcode 16.2  
 
@@ -9,7 +9,7 @@
 
 ## 1. MỤC TIÊU & BỐI CẢNH YÊU CẦU NGƯỜI DÙNG (USER REQUIREMENTS)
 
-Tài liệu này ghi nhận đầy đủ các yêu cầu thực tế của người dùng:
+Tài liệu này ghi nhận đầy đủ các yêu cầu thực tế trực tiếp từ người dùng:
 1. **Phạm vi người dùng (Single User):** Chỉ phục vụ duy nhất 1 người dùng cá nhân. Yêu cầu triển khai tinh gọn, không phức tạp hóa hạ tầng, không phát sinh chi phí vận hành.
 2. **Độc lập máy tính cá nhân (Mac cannot run 24/7):** Máy Mac không thể bật liên tục 24/7. Backend phải được deploy lên **Cloud** (chạy độc lập, ổn định, có HTTPS cho iOS).
 3. **Môi trường sử dụng thực tế (Lái xe / Di chuyển ngoài đường):**
@@ -48,7 +48,9 @@ Tài liệu này ghi nhận đầy đủ các yêu cầu thực tế của ngư�
 |                                                                                   |
 |  [ PlayerScreen (OLED Dark Mode) ]                                                |
 |   ├── Dòng chữ tiếng Anh: Bôi xanh Karaoke từng từ (Word-level highlight)         |
-|   └── Dòng phụ đề tiếng Việt: Hiển thị ngay bên dưới mỗi câu thoại                |
+|   ├── Dòng phụ đề tiếng Việt: Hiển thị ngay bên dưới mỗi câu thoại                |
+|   ├── Chế độ Giữ sáng màn hình (Keep Awake) khi gắn giá đỡ xe                     |
+|   └── Chế độ Tự động lặp lại (Auto-Loop) nghe ngấm ngữ điệu                       |
 |                                                                                   |
 |  [ 2 Chế độ Hoạt động ]:                                                         |
 |   ├── 1. ONLINE: Stream trực tiếp từ Cloud URL qua 4G                             |
@@ -78,15 +80,15 @@ Tài liệu này ghi nhận đầy đủ các yêu cầu thực tế của ngư�
 ### 3.2. Cơ chế Lưu trữ & Tải Offline trên iPhone 13 (Offline Storage Engine)
 Để giải quyết triệt để yêu cầu *"đi xe ngoài đường ... có bản tải về là có thể nghe được"*:
 1. **Dịch vụ Lưu trữ Cục bộ (`storageService.ts`):**
-   * Sử dụng `@react-native-async-storage/async-storage` để lưu danh sách các bài hội thoại đã tải (`OFFLINE_DIALOGUES_KEY`).
-   * Sử dụng `expo-file-system` (`FileSystem.documentDirectory + 'audio/' + id + '.mp3'`) để tải và lưu toàn bộ dữ liệu âm thanh trực tiếp vào bộ nhớ flash của iPhone 13.
+   * Sử dụng `@react-native-async-storage/async-storage` để lưu danh sách các bài hội thoại đã tải (`OFFLINE_INDEX_KEY`).
+   * Sử dụng `expo-file-system` (`FileSystem.documentDirectory + 'offline_dialogues/' + id + '.mp3'`) để tải và lưu toàn bộ file âm thanh trực tiếp vào bộ nhớ flash của iPhone 13.
 2. **Nút bấm Tải về (Download Button):**
    * Trên giao diện `PlayerScreen`, bổ sung nút trạng thái:
-     * Trạng thái 1: `⬇️ Tải về máy` (Chưa tải)
+     * Trạng thái 1: `⬇ Lưu máy` (Chưa tải)
      * Trạng thái 2: `⏳ Đang tải...` (Đang stream và ghi file)
-     * Trạng thái 3: `✅ Đã lưu Offline` (Đã có sẵn trên iPhone)
+     * Trạng thái 3: `✓ OFFLINE` (Đã có sẵn trên iPhone)
 3. **Phát nhạc Offline:**
-   * Khi người dùng mở mục **"📚 Bài đã lưu"**, app ưu tiên đọc danh sách từ bộ nhớ offline.
+   * Khi người dùng mở mục **"📚 Thư viện"**, app hợp nhất danh sách từ server và danh sách bài đã lưu offline.
    * Khi chọn bài offline, `TrackPlayer.add` sẽ trỏ trực tiếp vào đường dẫn cục bộ `file://${localPath}` thay vì URL mạng.
    * Dữ liệu JSON kịch bản (lời tiếng Anh + phụ đề tiếng Việt) nạp ngay lập tức 0ms, không phụ thuộc vào tình trạng sóng 4G.
 
@@ -105,17 +107,52 @@ Tài liệu này ghi nhận đầy đủ các yêu cầu thực tế của ngư�
      * Cỡ chữ 14pt, màu xám nhạt tự nhiên (`#CBD5E1`), giúp người học liếc nhanh hiểu nghĩa mà không gây rối mắt khi lái xe.
   4. **Tương tác chạm (Tap-to-Seek & Tap-to-Translate):**
      * Chạm vào cả dòng: Nhảy âm thanh tới đúng câu đó (`TrackPlayer.seekTo(segment.start)`).
-     * Chạm riêng vào một từ: Mở bottom sheet tra nghĩa chi tiết của từ đó.
+     * Chạm riêng vào một từ: Mở bottom sheet tra nghĩa chi tiết của từ đó (kèm phiên âm IPA, từ loại, ngữ cảnh).
 
 ### 3.4. Tối ưu khi Lái xe (AirPods & Lock Screen)
-* **Khóa màn hình (Lock Screen):** Tích hợp `NowPlaying` hiển thị tiêu đề bài hội thoại, tên nhân vật, thanh tiến trình thời gian và điều khiển Play/Pause.
+* **Khóa màn hình (Lock Screen):** Tích hợp `NowPlaying` hiển thị tiêu đề bài hội thoại, tên nhân vật đang nói (`🎙 Alex — English Commute`), thanh tiến trình thời gian và điều khiển Play/Pause.
 * **Cử chỉ tai nghe AirPods (Remote Command):**
-  * Bắt sự kiện `Event.RemoteJumpBackward`.
+  * Bắt sự kiện `Event.RemoteJumpBackward` và `Event.RemotePrevious`.
   * Thay vì lùi 15 giây mù quáng, app tính toán mốc thời gian của câu hiện tại (`currentSegment.start`) và lùi chính xác về đầu câu thoại đang nghe để người dùng nghe lại trọn vẹn câu thoại.
+
+### 3.5. Tính năng Bổ trợ Trải nghiệm Đi xe (Commute UX Enhancements)
+1. **Giữ sáng màn hình (Keep Awake Mode):**
+   * *Bối cảnh:* Khi gắn iPhone 13 lên giá đỡ ô tô/xe máy, iOS sẽ tự tắt màn hình sau 30s nếu không có tương tác, làm người lái không liếc xem được lời karaoke khi dừng đèn đỏ.
+   * *Giải pháp:* Tích hợp `expo-keep-awake` với nút toggle bật/tắt (icon ☀️) trực tiếp trên giao diện Player.
+2. **Chế độ Tự động Lặp lại (Auto-Loop / Repeat Mode):**
+   * *Bối cảnh:* Bài hội thoại đi xe có thời lượng vàng 1–3 phút. Người luyện nghe cần nghe đi nghe lại bài học 5–10 lần liên tục để ngấm ngữ điệu mà không thể thò tay bấm Play lại khi đang cầm vô lăng.
+   * *Giải pháp:* Nút toggle chế độ lặp (icon 🔁: Off ➔ Repeat 1 bài). Khi playback kết thúc, tự động tua về 0 và phát tiếp.
+3. **Thanh kéo tua thời gian (Audio Scrubber Slider):**
+   * Hiển thị thanh tiến trình mảnh màu xanh neon ở chân màn hình, hỗ trợ kéo tua mượt mà khi nghe các bài dài trên 3 phút.
 
 ---
 
-## 4. QUY TRÌNH TRIỂN KHAI THỰC HÀNH (STEP-BY-STEP WORKFLOW)
+## 4. CÁC LƯU Ý SỐNG CÒN & QUY TẮC VẬN HÀNH (CRITICAL CAVEATS)
+
+### ⚠️ Lưu ý 1: Hạn Chứng chỉ 7 Ngày của Apple ID Cá nhân Miễn phí
+* **Thực tế:** Không trả $99/năm cho Apple đồng nghĩa với việc profile cài qua Xcode sẽ hết hạn sau **đúng 7 ngày**. Khi hết hạn, mở app sẽ báo "App is no longer available".
+* **Quy trình gia hạn:** Cứ mỗi cuối tuần, cắm cáp USB nối iPhone 13 vào máy Mac và chạy:
+  ```bash
+  cd mobile-app && npx expo run:ios --device
+  ```
+  *(Mất ~30 giây. Toàn bộ các bài đã tải Offline trong máy **được bảo toàn 100%**, không bị xóa mất).*
+
+### ⚠️ Lưu ý 2: Kích hoạt Developer Mode & Trust Certificate trên iOS 18
+* Khi nạp app lần đầu lên iPhone 13:
+  1. Vào **Cài đặt > Quyền riêng tư & Bảo mật > Chế độ nhà phát triển (Developer Mode)** ➔ Bật (On) ➔ Khởi động lại iPhone.
+  2. Sau khi khởi động lại, vào **Cài đặt > Cài đặt chung > Quản lý VPN & Thiết bị > Apple Development** ➔ Bấm **Tin cậy (Trust)**.
+
+### ⚠️ Lưu ý 3: Lưu trữ Tạm trên Cloud (Ephemeral Storage) vs Lưu trữ Offline iPhone
+* **Thực tế:** Nền tảng Cloud miễn phí (Render / Koyeb) sử dụng ổ cứng tạm thời (ephemeral disk). Khi dịch vụ restart hoặc deploy phiên bản mới, các file `.mp3` cũ trên server có thể bị xóa.
+* **Chiến lược đối phó:** Nút **"⬇ Lưu máy"** trên iPhone là chốt chặn an toàn số 1. Ngay khi tạo bài xong, người dùng bấm "Lưu máy" để file MP3 và kịch bản nằm vĩnh viễn trong bộ nhớ flash của iPhone 13.
+
+### ⚠️ Lưu ý 4: Độ dài Kịch bản Khuyến nghị (Golden Script Length)
+* **Khuyến nghị:** Kịch bản tối ưu nhất là từ **6 đến 20 câu thoại (thời lượng 1 đến 3 phút)**.
+* **Lý do:** Thời gian AI sinh âm thanh chỉ mất 2-3 giây, độ dài vừa vặn để nghe lặp lại 4-5 lần trong một chặng đường ngắn, tối ưu hóa khả năng ghi nhớ của não bộ khi tham gia giao thông.
+
+---
+
+## 5. KẾ HOẠCH TRIỂN KHAI THỰC HÀNH (STEP-BY-STEP WORKFLOW)
 
 ### Giai đoạn 1: Deploy Backend lên Cloud (Koyeb / Render)
 1. Đẩy code lên GitHub repository cá nhân.
@@ -129,14 +166,5 @@ Tài liệu này ghi nhận đầy đủ các yêu cầu thực tế của ngư�
 
 ### Giai đoạn 3: Kiểm thử Chế độ Ngoài đường
 1. **Kiểm thử Online (4G):** Tắt Wi-Fi trên iPhone 13, bật 4G, mở app tạo 1 bài hội thoại mới ➔ Xác nhận backend sinh bài và phát qua 4G thành công.
-2. **Kiểm thử Offline:** Bấm "Tải về máy" bài vừa tạo ➔ Bật Chế độ máy bay (Airplane Mode) trên iPhone 13 ➔ Mở mục "Bài đã lưu" ➔ Bấm phát ➔ Xác nhận âm thanh phát mượt mà, lời tiếng Anh bôi xanh và phụ đề tiếng Việt hiển thị 100%.
-
----
-
-## 5. KẾT LUẬN & CAM KẾT PHẠM VI (SPEC SCOPE)
-* Bản thiết kế này đã bao hàm trọn vẹn 100% các yêu cầu của người dùng:
-  - 1 người dùng cá nhân (nhanh gọn, không tốn phí).
-  - Máy Mac không cần bật 24/7 (Backend độc lập trên Cloud).
-  - Nghe được ngoài đường khi đi xe bằng cả 2 cách: bật 4G hoặc tải về máy nghe offline.
-  - Hiển thị đầy đủ chữ tiếng Anh chạy karaoke và phụ đề dịch tiếng Việt ngay bên dưới.
-  - Chuẩn xác trên phần cứng iPhone 13 (Bản tiêu chuẩn) chạy iOS 18.1.
+2. **Kiểm thử Offline:** Bấm "⬇ Lưu máy" bài vừa tạo ➔ Bật Chế độ máy bay (Airplane Mode) trên iPhone 13 ➔ Mở mục "📚 Thư viện" ➔ Bấm phát ➔ Xác nhận âm thanh phát mượt mà, lời tiếng Anh bôi xanh và phụ đề tiếng Việt hiển thị 100%.
+3. **Kiểm thử Keep Awake & Loop:** Bật Giữ sáng màn hình ➔ Đặt lên giá đỡ xe ➔ Bật Loop bài học ➔ Xác nhận màn hình không tắt và bài học tự phát lại khi kết thúc.
