@@ -307,4 +307,12 @@ Theo yêu cầu thực tế trực tiếp từ người dùng (User Requirements
    - Vừa nghe âm thanh chạy ngầm màn hình khóa qua tai nghe AirPods (bóp tai nhảy lùi về đầu câu).
    - Vừa nhìn được chữ tiếng Anh chạy bôi xanh theo từng từ (Word-level Karaoke highlight).
    - Vừa xem được dòng phụ đề dịch tiếng Việt (sub) nằm cố định ngay bên dưới mỗi câu thoại.
+5. **Tính năng Bổ trợ Đi xe (Commute UX Enhancements):**
+   - **Giữ sáng màn hình (Keep Awake Mode):** Nút toggle (icon ☀️) ngăn màn hình iPhone tự tắt sau 30s khi gắn lên giá đỡ xe, giúp người lái liếc xem lời karaoke khi dừng đèn đỏ.
+   - **Tự động Lặp lại (Auto-Loop / Repeat):** Tự động phát lại bài học (1-3 phút) nhiều lần liên tục để ngấm ngữ điệu mà không cần chạm tay vào màn hình khi đang lái.
+6. **Các Lưu ý Sống còn (Critical Caveats):**
+   - **Hạn 7 ngày Apple ID miễn phí:** Cuối tuần cắm USB vào Mac chạy `npx expo run:ios --device` (~30s) để gia hạn chứng chỉ, không mất dữ liệu offline.
+   - **iOS 18 Developer Mode & Trust:** Bật Developer Mode trong Cài đặt và bấm Tin cậy chứng chỉ Apple Development.
+   - **Lưu trữ Cloud tạm (Ephemeral Disk):** Nút "⬇ Lưu máy" trên iPhone là chốt chặn an toàn giúp lưu vĩnh viễn file MP3 và kịch bản vào bộ nhớ máy, không sợ server Cloud reset.
+
 

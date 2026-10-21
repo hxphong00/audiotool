@@ -191,4 +191,12 @@ Based on explicit requirements from user feedback (2026-10-21):
    - Background audio plays uninterrupted when iPhone 13 is locked (`AVAudioSession`).
    - Hands-free AirPods controls: Squeeze/tap earbud to jump back to the start of the current sentence (`RemoteJumpBackward`).
    - Visual screen: Word-level green karaoke highlighting synchronized to milliseconds, with Vietnamese subtitle translation positioned directly below each dialogue sentence.
+5. **Commute UX Enhancements:**
+   - **Keep Screen Awake:** Toggle (icon ☀️) preventing the iPhone screen from sleeping after 30s when mounted on car/motorcycle holders, allowing glanceable karaoke reading at red lights.
+   - **Auto-Loop / Repeat Mode:** Continuous replay of 1–3 min lessons for natural immersion without manual phone interaction while steering.
+6. **Critical Operational Caveats:**
+   - **Free Apple ID 7-day Provisioning:** Weekly 30s re-signing via USB (`npx expo run:ios --device`) preserves 100% of offline lessons.
+   - **iOS 18 Developer Mode & Trust:** Required manual toggle in Privacy & Security settings plus trusting developer certificate.
+   - **Ephemeral Cloud Storage:** Free tier container restarts can wipe server files; the iPhone's "Save Offline" button serves as the definitive permanent archive.
+
 
