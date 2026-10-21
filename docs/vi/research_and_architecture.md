@@ -290,3 +290,21 @@ Quá trình xây dựng được chia thành **4 giai đoạn cụ thể**, đ�
    - Bấm nút trên tai nghe: Nhảy lùi về đầu câu thành công.
    - Bật sáng màn hình: Chữ lập tức bắt nhịp đúng vị trí đang nói.
    - Chạm vào từ: Mở bảng tra từ điển chính xác.
+
+---
+
+## 7. Đặc tả Yêu cầu Cá nhân & Chiến lược Triển khai Thực tế (Single-User Cloud & Commute Strategy)
+
+Theo yêu cầu thực tế trực tiếp từ người dùng (User Requirements Update - 2026-10-21):
+1. **Phạm vi người dùng (Single User):** Chỉ có 1 mình người dùng sử dụng. Triển khai tinh gọn tối đa, 0 đồng chi phí vận hành.
+2. **Độc lập máy tính (Mac không bật 24/7):**
+   - Máy tính Mac không thể mở 24/7 để làm server.
+   - Backend Python + FFmpeg được đóng gói qua `backend/Dockerfile` và deploy độc lập lên **Cloud** (khuyên dùng **Koyeb** chạy 24/7 không ngủ đông, hoặc Render.com / Fly.io) với domain HTTPS sẵn sàng cho iOS.
+3. **Môi trường Lái xe & Di chuyển ngoài đường (Dual Commute Modes):**
+   - **Chế độ 1 - Bật mạng (4G/5G Online):** Gọi trực tiếp về Cloud Backend để stream audio hoặc tạo bài mới bất cứ khi nào.
+   - **Chế độ 2 - Bản tải về (100% Offline):** Tải trước các bài hội thoại (audio MP3 + kịch bản JSON) về bộ nhớ máy iPhone 13 (`expo-file-system` + `AsyncStorage`). Khi ra đường, tắt hẳn mạng hoặc bật Chế độ máy bay vẫn mở danh sách "Bài đã lưu" ra nghe bình thường.
+4. **Trải nghiệm Học song ngữ khi đi xe:**
+   - Vừa nghe âm thanh chạy ngầm màn hình khóa qua tai nghe AirPods (bóp tai nhảy lùi về đầu câu).
+   - Vừa nhìn được chữ tiếng Anh chạy bôi xanh theo từng từ (Word-level Karaoke highlight).
+   - Vừa xem được dòng phụ đề dịch tiếng Việt (sub) nằm cố định ngay bên dưới mỗi câu thoại.
+

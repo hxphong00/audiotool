@@ -174,3 +174,21 @@ audiotool/
     ├── vi/                               # Vietnamese Guides & Architecture
     └── en/                               # English Guides & Architecture
 ```
+
+---
+
+## 6. Personal User Requirements & Cloud / Commute Strategy
+
+Based on explicit requirements from user feedback (2026-10-21):
+1. **Single Personal User:** Built solely for one individual user. Priority is maximum agility, zero monthly hosting costs, and fast deployment.
+2. **Mac Cannot Run 24/7 (Cloud Hosting Required):**
+   - The development Mac host cannot remain powered on 24/7.
+   - The Python + FFmpeg backend is containerized via `backend/Dockerfile` and deployed independently to a **Cloud provider** (recommended: **Koyeb** for 24/7 always-on free execution without spin-down sleep, or Render / Fly.io) with public HTTPS for iOS ATS security.
+3. **Dual Commuting Playback Modes (On the Road):**
+   - **Mode 1 - Cellular 4G/5G Online:** Mobile app calls the Cloud backend directly over 4G to generate new dialogues on the go or stream live.
+   - **Mode 2 - 100% Offline Downloaded Playback:** Dialogues and MP3 audio files can be pre-downloaded to local iPhone 13 storage (`expo-file-system` + `AsyncStorage`). On the road, users can disable cellular data or enable Airplane Mode and play saved lessons without interruptions or data usage.
+4. **Bilingual Commute Learning Experience:**
+   - Background audio plays uninterrupted when iPhone 13 is locked (`AVAudioSession`).
+   - Hands-free AirPods controls: Squeeze/tap earbud to jump back to the start of the current sentence (`RemoteJumpBackward`).
+   - Visual screen: Word-level green karaoke highlighting synchronized to milliseconds, with Vietnamese subtitle translation positioned directly below each dialogue sentence.
+
