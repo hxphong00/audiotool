@@ -11,7 +11,7 @@ The system has been comprehensively verified and tested against the following ph
 
 | Component | Verified Specification | Compatibility Notes |
 | :--- | :--- | :--- |
-| **Target Mobile Device (Physical)** | **iPhone - iOS 18.1 (Build 22B83)** | 100% compatible with `AVAudioSession`, Lock Screen controls, AirPods gestures, Developer Mode |
+| **Target Mobile Device (Physical)** | **iPhone 13 (Standard) — iOS 18.1 (Build 22B83)** | 6.1" Super Retina XDR (390×844 pt), Notch, A15 Bionic. 100% compatible with `AVAudioSession`, Lock Screen controls, AirPods gestures, Developer Mode |
 | **Development Host (Mac)** | **Apple Silicon Mac (`arm64`)** | M1/M2/M3/M4 Architecture |
 | **IDE & iOS SDK** | **Xcode 16.2 (Build 16C5032a)** | Located at `/Applications/Xcode.app` |
 | **Backend Runtime** | **Python 3.9.6** (`backend/venv`) | FastAPI, Uvicorn, edge-tts, 10/10 automated tests passing |

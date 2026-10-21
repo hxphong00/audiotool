@@ -4,10 +4,10 @@
 
 [![Tests](https://img.shields.io/badge/pytest-10%2F10%20passing-brightgreen)](backend/tests/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-0%20errors-blue)](mobile-app/)
-[![Target](https://img.shields.io/badge/Verified-iOS%2018.1%20(22B83)-black?logo=apple)](docs/vi/setup_and_testing.md)
+[![Target](https://img.shields.io/badge/Verified-iPhone%2013%20(iOS%2018.1)-black?logo=apple)](docs/vi/setup_and_testing.md)
 [![License](https://img.shields.io/badge/license-MIT-purple)](#)
 
-AudioTool is an open-source, full-stack platform built specifically for English learners who commute. It combines a **Python FastAPI backend** with neural multi-speaker TTS and a **Native iOS React Native app** (verified on **iPhone iOS 18.1**) featuring Spotify-like live lyrics syncing, hands-free AirPods rewind controls, and background audio playback that continues uninterrupted when the iPhone is locked.
+AudioTool is an open-source, full-stack platform built specifically for English learners who commute. It combines a **Python FastAPI backend** with neural multi-speaker TTS and a **Native iOS React Native app** (verified on physical **iPhone 13 Standard — iOS 18.1**) featuring Spotify-like live lyrics syncing, hands-free AirPods rewind controls, and background audio playback that continues uninterrupted when the iPhone is locked.
 
 ---
 

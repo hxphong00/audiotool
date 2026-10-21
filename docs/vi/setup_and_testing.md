@@ -11,7 +11,7 @@ Hệ thống đã được kiểm tra tính tương thích và xác thực thự
 
 | Thành phần | Thông số chi tiết đã xác thực | Ghi chú tương thích |
 | :--- | :--- | :--- |
-| **Thiết bị chạy app (iPhone thật)** | **iPhone - iOS 18.1 (Build 22B83)** | Hỗ trợ 100% `AVAudioSession`, Lock Screen controls, AirPods gestures, Developer Mode |
+| **Thiết bị chạy app (iPhone thật)** | **iPhone 13 (Bản tiêu chuẩn / Standard) — iOS 18.1 (Build 22B83)** | Màn hình 6.1" Super Retina XDR (390×844 pt), Tai thỏ (Notch), Chip A15 Bionic. Hỗ trợ 100% `AVAudioSession`, Lock Screen controls, AirPods gestures, Developer Mode |
 | **Máy tính phát triển (Mac)** | **Apple Silicon Mac (`arm64`)** | M1/M2/M3/M4 |
 | **IDE & iOS SDK** | **Xcode 16.2 (Build 16C5032a)** | Đường dẫn `/Applications/Xcode.app` |
 | **Backend Runtime** | **Python 3.9.6** (`backend/venv`) | Chạy FastAPI, Uvicorn, edge-tts, 10/10 tests pass |
