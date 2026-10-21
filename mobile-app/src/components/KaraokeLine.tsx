@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { DialogueSegment } from '../types';
 import { WordPressable } from './WordPressable';
 
@@ -7,16 +7,22 @@ interface KaraokeLineProps {
   segment: DialogueSegment;
   currentTime: number;
   isActive: boolean;
+  isShadowingPauseActive?: boolean;
+  isBookmarked?: boolean;
   onWordPress: (word: string, segment: DialogueSegment) => void;
   onLinePress: (segment: DialogueSegment) => void;
+  onToggleBookmark?: (segment: DialogueSegment) => void;
 }
 
 const KaraokeLineComponent: React.FC<KaraokeLineProps> = ({
   segment,
   currentTime,
   isActive,
+  isShadowingPauseActive = false,
+  isBookmarked = false,
   onWordPress,
   onLinePress,
+  onToggleBookmark,
 }) => {
   return (
     <Pressable
@@ -29,9 +35,25 @@ const KaraokeLineComponent: React.FC<KaraokeLineProps> = ({
             {segment.speaker_name || segment.speaker}
           </Text>
         </View>
-        <Text style={styles.timestampText}>
-          {segment.start.toFixed(1)}s
-        </Text>
+        <View style={styles.speakerRightRow}>
+          <Text style={styles.timestampText}>
+            {segment.start.toFixed(1)}s
+          </Text>
+          {Boolean(onToggleBookmark) && (
+            <TouchableOpacity
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onToggleBookmark?.(segment);
+              }}
+              style={styles.starBtn}
+            >
+              <Text style={[styles.starIcon, isBookmarked && styles.starIconActive]}>
+                {isBookmarked ? '⭐' : '☆'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* English Words with Real-Time WordBoundary Sync */}
@@ -61,6 +83,15 @@ const KaraokeLineComponent: React.FC<KaraokeLineProps> = ({
       >
         {segment.text_vi}
       </Text>
+
+      {/* Shadowing Practice Prompt when in pause window */}
+      {isActive && isShadowingPauseActive && (
+        <View style={styles.shadowingBanner}>
+          <Text style={styles.shadowingBannerText}>
+            🗣 TỰ NHẨM (SHADOWING): Hãy đọc to lại câu trên!
+          </Text>
+        </View>
+      )}
     </Pressable>
   );
 };
@@ -72,6 +103,8 @@ export const KaraokeLine = React.memo(
   KaraokeLineComponent,
   (prev, next) => {
     if (prev.isActive !== next.isActive) return false;
+    if (prev.isBookmarked !== next.isBookmarked) return false;
+    if (prev.isShadowingPauseActive !== next.isShadowingPauseActive) return false;
     if (prev.segment !== next.segment) return false;
     if (!next.isActive) return true;
     return Math.abs(prev.currentTime - next.currentTime) < 0.02;
@@ -102,6 +135,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  speakerRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  starBtn: {
+    padding: 2,
+    marginLeft: 4,
+  },
+  starIcon: {
+    fontSize: 16,
+    color: '#666666',
+  },
+  starIconActive: {
+    color: '#FFD700',
   },
   speakerBadge: {
     alignSelf: 'flex-start',
@@ -142,5 +191,19 @@ const styles = StyleSheet.create({
   activeTranslationText: {
     color: '#D0D0D0',
     fontWeight: '500',
+  },
+  shadowingBanner: {
+    marginTop: 10,
+    backgroundColor: 'rgba(29, 185, 84, 0.18)',
+    borderWidth: 1,
+    borderColor: '#1DB954',
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  shadowingBannerText: {
+    color: '#1DB954',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

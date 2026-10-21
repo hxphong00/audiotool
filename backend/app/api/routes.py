@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.api.range_streaming import stream_file_with_range
+from app.services.ai_script_service import generate_dialogue_from_topic
 from app.services.pipeline import process_dialogue
 from app.services.translation_service import lookup_word_details
 
@@ -39,6 +40,22 @@ class DialogueCreateRequest(BaseModel):
     title: Optional[str] = "English Conversation"
     script: str
     silence_sec: Optional[float] = 0.4
+    pause_between_speakers: Optional[float] = None
+    accent: Optional[str] = "us"
+    emotion: Optional[str] = "natural"
+
+
+class TopicScriptRequest(BaseModel):
+    topic: str
+    num_lines: Optional[int] = 10
+
+
+class TopicDialogueRequest(BaseModel):
+    topic: str
+    num_lines: Optional[int] = 10
+    pause_between_speakers: Optional[float] = 0.4
+    accent: Optional[str] = "us"
+    emotion: Optional[str] = "natural"
 
 
 @router.get("/health")
@@ -46,10 +63,62 @@ async def health():
     return {"status": "ok"}
 
 
+@router.post("/dialogue/generate-script")
+async def generate_script_endpoint(req: TopicScriptRequest):
+    if not req.topic or not req.topic.strip():
+        raise HTTPException(status_code=400, detail="Topic cannot be empty")
+    try:
+        result = await asyncio.to_thread(
+            generate_dialogue_from_topic,
+            req.topic.strip(),
+            req.num_lines or 10,
+        )
+        return result
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/dialogue/from-topic")
+async def create_dialogue_from_topic_endpoint(req: TopicDialogueRequest, request: Request):
+    if not req.topic or not req.topic.strip():
+        raise HTTPException(status_code=400, detail="Topic cannot be empty")
+    try:
+        generated = await asyncio.to_thread(
+            generate_dialogue_from_topic,
+            req.topic.strip(),
+            req.num_lines or 10,
+        )
+        effective_silence = max(0.0, min(10.0, float(req.pause_between_speakers or 0.4)))
+        base_url = str(request.base_url).rstrip("/")
+        data = await process_dialogue(
+            script=generated["script"],
+            title=generated["title"],
+            storage_dir=STORAGE_DIR,
+            base_url=base_url,
+            silence_sec=effective_silence,
+            accent=req.accent or "us",
+            emotion=req.emotion or "natural",
+        )
+        return _rewrite_urls_for_request(data, request)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/dialogue/create")
 async def create_dialogue(req: DialogueCreateRequest, request: Request):
     if not req.script or not req.script.strip():
         raise HTTPException(status_code=400, detail="Script cannot be empty")
+
+    raw_pause = (
+        req.pause_between_speakers
+        if req.pause_between_speakers is not None
+        else (req.silence_sec if req.silence_sec is not None else 0.4)
+    )
+    effective_silence = max(0.0, min(10.0, float(raw_pause)))
 
     base_url = str(request.base_url).rstrip("/")
     try:
@@ -58,7 +127,9 @@ async def create_dialogue(req: DialogueCreateRequest, request: Request):
             title=req.title or "English Conversation",
             storage_dir=STORAGE_DIR,
             base_url=base_url,
-            silence_sec=req.silence_sec if req.silence_sec is not None else 0.4,
+            silence_sec=effective_silence,
+            accent=req.accent or "us",
+            emotion=req.emotion or "natural",
         )
         return _rewrite_urls_for_request(data, request)
     except ValueError as ve:

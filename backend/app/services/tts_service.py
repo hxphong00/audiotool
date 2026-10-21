@@ -16,6 +16,32 @@ FEMALE_VOICES = [
     "en-US-EmmaNeural",
 ]
 
+ACCENT_VOICE_POOLS: Dict[str, Dict[str, List[str]]] = {
+    "us": {
+        "male": ["en-US-AndrewNeural", "en-US-BrianNeural"],
+        "female": ["en-US-AvaNeural", "en-US-EmmaNeural"],
+    },
+    "uk": {
+        "male": ["en-GB-RyanNeural", "en-GB-ThomasNeural"],
+        "female": ["en-GB-SoniaNeural", "en-GB-LibbyNeural"],
+    },
+    "au": {
+        "male": ["en-AU-WilliamNeural"],
+        "female": ["en-AU-NatashaNeural"],
+    },
+    "ca": {
+        "male": ["en-CA-LiamNeural"],
+        "female": ["en-CA-ClaraNeural"],
+    },
+}
+
+EMOTION_PROSODY: Dict[str, Dict[str, str]] = {
+    "natural": {"rate": "+0%", "pitch": "+0Hz"},
+    "cheerful": {"rate": "+8%", "pitch": "+12Hz"},
+    "surprised": {"rate": "+10%", "pitch": "+20Hz"},
+    "serious": {"rate": "-6%", "pitch": "-10Hz"},
+}
+
 DEFAULT_VOICE_POOL = [
     "en-US-AndrewNeural",  # Male
     "en-US-AvaNeural",     # Female
@@ -59,9 +85,11 @@ def detect_speaker_gender(speaker: str, fallback_index: int = 0) -> str:
 def get_speaker_profile(
     speaker: str,
     session_map: Optional[Dict[str, Dict[str, str]]] = None,
+    accent: str = "us",
 ) -> Dict[str, str]:
     """
-    Assigns a consistent voice and gender profile for each speaker within a dialogue.
+    Assigns a consistent voice and gender profile for each speaker within a dialogue,
+    supporting US, UK, AU, and CA accents.
     """
     clean_key = speaker.strip().lower()
     if session_map is not None and clean_key in session_map:
@@ -75,13 +103,16 @@ def get_speaker_profile(
         if session_map is not None
         else set(_speaker_voice_map.values())
     )
-    pool = MALE_VOICES if gender == "male" else FEMALE_VOICES
+    accent_key = (accent or "us").strip().lower()
+    accent_pools = ACCENT_VOICE_POOLS.get(accent_key, ACCENT_VOICE_POOLS["us"])
+    pool = accent_pools["male"] if gender == "male" else accent_pools["female"]
     chosen_voice = next((v for v in pool if v not in used_voices), pool[existing_count % len(pool)])
 
     profile = {
         "name": speaker.strip(),
         "voice": chosen_voice,
         "gender": gender,
+        "accent": accent_key if accent_key in ACCENT_VOICE_POOLS else "us",
     }
     if session_map is not None:
         session_map[clean_key] = profile
@@ -155,7 +186,7 @@ def norm_Raw_in_cand(norm_raw: str, norm_cand: str) -> bool:
 
 
 async def generate_segment_tts(
-    text: str, voice: str, output_path: str
+    text: str, voice: str, output_path: str, emotion: str = "natural"
 ) -> Dict:
     """
     Generates a normalized 24kHz mono MP3 file for a single text segment using edge-tts,
@@ -164,9 +195,14 @@ async def generate_segment_tts(
     """
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
+    emotion_key = (emotion or "natural").strip().lower()
+    prosody = EMOTION_PROSODY.get(emotion_key, EMOTION_PROSODY["natural"])
+
     communicate = edge_tts.Communicate(
         text=text,
         voice=voice,
+        rate=prosody["rate"],
+        pitch=prosody["pitch"],
         boundary="WordBoundary",
     )
 

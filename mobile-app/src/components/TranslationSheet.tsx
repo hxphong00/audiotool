@@ -17,6 +17,8 @@ interface TranslationSheetProps {
   visible: boolean;
   loading: boolean;
   lookupData: WordLookupResult | null;
+  isWordSaved?: boolean;
+  onSaveWord?: (data: WordLookupResult) => void;
   onClose: () => void;
 }
 
@@ -24,6 +26,8 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
   visible,
   loading,
   lookupData,
+  isWordSaved = false,
+  onSaveWord,
   onClose,
 }) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -142,9 +146,27 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
           </View>
         )}
 
-        <TouchableOpacity style={styles.actionBtn} onPress={onClose}>
-          <Text style={styles.actionBtnText}>Tiếp tục nghe ▶</Text>
-        </TouchableOpacity>
+        <View style={styles.actionRow}>
+          {Boolean(onSaveWord) && (
+            <TouchableOpacity
+              style={[styles.saveWordBtn, isWordSaved && styles.saveWordBtnActive]}
+              onPress={() => lookupData && onSaveWord?.(lookupData)}
+            >
+              <Text
+                style={[
+                  styles.saveWordBtnText,
+                  isWordSaved && styles.saveWordBtnTextActive,
+                ]}
+              >
+                {isWordSaved ? '⭐ Đã lưu' : '☆ Lưu từ này'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={styles.actionBtn} onPress={onClose}>
+            <Text style={styles.actionBtnText}>Tiếp tục nghe ▶</Text>
+          </TouchableOpacity>
+        </View>
       </BottomSheetView>
     </BottomSheet>
   );
@@ -288,8 +310,35 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 4,
   },
-  actionBtn: {
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     marginTop: 16,
+  },
+  saveWordBtn: {
+    flex: 1,
+    backgroundColor: '#2A2A2A',
+    borderWidth: 1,
+    borderColor: '#444444',
+    paddingVertical: 14,
+    borderRadius: 30,
+    alignItems: 'center',
+  },
+  saveWordBtnActive: {
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    borderColor: '#FFD700',
+  },
+  saveWordBtnText: {
+    color: '#E0E0E0',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  saveWordBtnTextActive: {
+    color: '#FFD700',
+  },
+  actionBtn: {
+    flex: 1.2,
     backgroundColor: '#1DB954',
     paddingVertical: 14,
     borderRadius: 30,
@@ -297,7 +346,7 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     color: '#000000',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
   },
 });

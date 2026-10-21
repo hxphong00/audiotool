@@ -30,6 +30,7 @@ let fallbackIsPlaying = false;
 let fallbackPosition = 0;
 let fallbackDuration = 0;
 let fallbackRate = 1.0;
+let isAutoLoopEnabled = true;
 let fallbackTimer: ReturnType<typeof setInterval> | null = null;
 let webAudioElement: any = null;
 const fallbackListeners = new Set<() => void>();
@@ -48,15 +49,25 @@ function startFallbackTimer() {
           fallbackDuration = webAudioElement.duration;
         }
         if (webAudioElement.ended) {
-          fallbackIsPlaying = false;
-          fallbackPosition = 0;
+          if (isAutoLoopEnabled) {
+            webAudioElement.currentTime = 0;
+            fallbackPosition = 0;
+            webAudioElement.play?.();
+          } else {
+            fallbackIsPlaying = false;
+            fallbackPosition = 0;
+          }
         }
       } else {
         fallbackPosition += 0.05 * fallbackRate;
         if (fallbackDuration > 0 && fallbackPosition >= fallbackDuration) {
-          fallbackPosition = 0;
-          fallbackIsPlaying = false;
-          if (fallbackTimer) clearInterval(fallbackTimer);
+          if (isAutoLoopEnabled) {
+            fallbackPosition = 0;
+          } else {
+            fallbackPosition = 0;
+            fallbackIsPlaying = false;
+            if (fallbackTimer) clearInterval(fallbackTimer);
+          }
         }
       }
       notifyFallbackListeners();
@@ -214,8 +225,12 @@ export async function loadTrackIntoPlayer(params: {
   artist: string;
   duration: number;
   rate?: number;
+  autoLoop?: boolean;
 }): Promise<void> {
   currentDialogueTitle = params.title;
+  if (typeof params.autoLoop === 'boolean') {
+    isAutoLoopEnabled = params.autoLoop;
+  }
   if (!TrackPlayerRef) {
     fallbackIsPlaying = false;
     fallbackPosition = 0;
@@ -229,6 +244,7 @@ export async function loadTrackIntoPlayer(params: {
         }
         webAudioElement = new GlobalAudio(params.url);
         webAudioElement.playbackRate = fallbackRate;
+        webAudioElement.loop = isAutoLoopEnabled;
       }
     } catch {
       webAudioElement = null;
@@ -246,11 +262,40 @@ export async function loadTrackIntoPlayer(params: {
       artist: params.artist,
       duration: params.duration,
     });
+    if (RNTPConstants?.RepeatMode) {
+      await TrackPlayerRef.setRepeatMode(
+        isAutoLoopEnabled
+          ? RNTPConstants.RepeatMode.Track
+          : RNTPConstants.RepeatMode.Off
+      );
+    }
     if (params.rate && params.rate !== 1.0) {
       await TrackPlayerRef.setRate(params.rate);
     }
   } catch (e) {
     console.warn('Track load error:', e);
+  }
+}
+
+export async function setPlayerRepeatMode(enabled: boolean): Promise<void> {
+  isAutoLoopEnabled = enabled;
+  if (!TrackPlayerRef || !RNTPConstants?.RepeatMode) {
+    if (webAudioElement) {
+      try {
+        webAudioElement.loop = enabled;
+      } catch {
+        // Ignore
+      }
+    }
+    notifyFallbackListeners();
+    return;
+  }
+  try {
+    await TrackPlayerRef.setRepeatMode(
+      enabled ? RNTPConstants.RepeatMode.Track : RNTPConstants.RepeatMode.Off
+    );
+  } catch (e) {
+    console.warn('Set repeat mode warning:', e);
   }
 }
 
@@ -408,6 +453,17 @@ export async function playbackService() {
         await smartSkipToNextSentence();
       } catch (err) {
         console.warn('RemoteNext error:', err);
+      }
+    }),
+    // Auto-Loop safeguard when queue reaches end
+    TrackPlayerRef.addEventListener(Event.PlaybackQueueEnded, async () => {
+      if (isAutoLoopEnabled) {
+        try {
+          await TrackPlayerRef?.seekTo(0);
+          await TrackPlayerRef?.play();
+        } catch {
+          // Ignore
+        }
       }
     })
   );

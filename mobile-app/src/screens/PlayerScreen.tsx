@@ -9,6 +9,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import {
+  activateKeepAwakeAsync,
+  deactivateKeepAwake,
+} from 'expo-keep-awake';
 
 import { AudioControls } from '../components/AudioControls';
 import { KaraokeLine } from '../components/KaraokeLine';
@@ -18,6 +22,7 @@ import {
   fetchDialogue,
   fetchDialogueList,
   loadSavedApiBaseUrl,
+  loadSavedShadowingPause,
   lookupWord,
   resolvePlayableAudioUrl,
 } from '../services/apiService';
@@ -36,6 +41,7 @@ import {
   seekPlayerTo,
   setCurrentSegments,
   setPlayerRate,
+  setPlayerRepeatMode,
   setupTrackPlayer,
   smartRewindToSentenceStart,
   smartSkipToNextSentence,
@@ -46,10 +52,21 @@ import {
   DialogueSummary,
   WordLookupResult,
 } from '../types';
+import {
+  ensureInitialSM2Schedule,
+  getAllSM2Records,
+  getBookmarkedSentences,
+  getSavedVocabulary,
+  isSM2Due,
+  makeSentenceBookmarkId,
+  saveWordToVocabulary,
+  toggleSentenceBookmark,
+} from '../services/learningService';
 import { ImportScreen } from './ImportScreen';
 import { LibraryScreen } from './LibraryScreen';
+import { StudyDeckScreen } from './StudyDeckScreen';
 
-type ActiveTab = 'player' | 'library' | 'import';
+type ActiveTab = 'player' | 'library' | 'import' | 'study';
 
 const FALLBACK_DIALOGUE: DialogueData = {
   conversation_id: 'conv_1ce89d5b61',
@@ -148,12 +165,68 @@ export const PlayerScreen: React.FC = () => {
   const [libraryItems, setLibraryItems] = useState<DialogueSummary[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [isLooping, setIsLooping] = useState(true);
+  const [keepScreenAwake, setKeepScreenAwake] = useState(true);
+  // Shadowing Pause Mode from Settings (0 = Off by default)
+  const [shadowingPauseSec, setShadowingPauseSecState] = useState<number>(0);
+  const [isDynamicShadowingWait, setIsDynamicShadowingWait] = useState(false);
+  const lastShadowedSegIdRef = useRef<number | null>(null);
+  const shadowingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Word Tap-to-Translate Bottom Sheet state
   const [sheetVisible, setSheetVisible] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupData, setLookupData] = useState<WordLookupResult | null>(null);
   const wasPlayingBeforeLookupRef = useRef<boolean>(false);
+
+  // #13, #14, #15: Learning states (Bookmarks, Vocab Deck, SM-2 Due Count)
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const [savedVocabIds, setSavedVocabIds] = useState<Set<string>>(new Set());
+  const [dueReviewCount, setDueReviewCount] = useState<number>(0);
+
+  const refreshLearningStates = useCallback(async () => {
+    try {
+      const [bookmarks, vocabs, sm2] = await Promise.all([
+        getBookmarkedSentences(),
+        getSavedVocabulary(),
+        getAllSM2Records(),
+      ]);
+      setBookmarkedIds(new Set(bookmarks.map((b) => b.id)));
+      setSavedVocabIds(new Set(vocabs.map((v) => v.id.toLowerCase().trim())));
+      const due = Object.values(sm2).filter((r) => isSM2Due(r)).length;
+      setDueReviewCount(due);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshLearningStates();
+  }, [refreshLearningStates]);
+
+  async function handleToggleBookmarkSentence(seg: DialogueSegment) {
+    const { list } = await toggleSentenceBookmark(
+      dialogue.conversation_id,
+      dialogue.title,
+      seg
+    );
+    setBookmarkedIds(new Set(list.map((b) => b.id)));
+  }
+
+  async function handleSaveWordFromSheet(data: WordLookupResult) {
+    const updated = await saveWordToVocabulary({
+      word: data.word,
+      phonetic: data.phonetic || '',
+      part_of_speech: data.part_of_speech || '',
+      translation_vi: data.translation_vi,
+      context_en: data.context_en || '',
+      context_vi: data.context_vi || '',
+      conversation_id: dialogue.conversation_id,
+      dialogue_title: dialogue.title,
+    });
+    setSavedVocabIds(new Set(updated.map((v) => v.id.toLowerCase().trim())));
+    Alert.alert('Đã lưu vào sổ tay ✓', `Từ "${data.word}" đã được thêm vào mục Ôn tập.`);
+  }
 
   const flatListRef = useRef<FlatList<DialogueSegment>>(null);
   const lastScrolledIndex = useRef<number>(-1);
@@ -163,12 +236,29 @@ export const PlayerScreen: React.FC = () => {
     dialogue.total_duration
   );
 
+  // Keep screen awake while commuting (expo-keep-awake)
+  useEffect(() => {
+    const KEEP_AWAKE_TAG = 'commute-karaoke-awake';
+    if (keepScreenAwake) {
+      activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(() => {});
+    } else {
+      deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => {});
+    }
+    return () => {
+      deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => {});
+    };
+  }, [keepScreenAwake]);
+
   // Initialize player & load initial dialogue (Offline-first + Server sync)
   useEffect(() => {
     let mounted = true;
 
     async function init() {
       await loadSavedApiBaseUrl();
+      const savedPause = await loadSavedShadowingPause();
+      if (mounted) {
+        setShadowingPauseSecState(savedPause);
+      }
       await setupTrackPlayer();
       if (!mounted) return;
       await loadInitialDialogue();
@@ -193,7 +283,11 @@ export const PlayerScreen: React.FC = () => {
       artist: 'English Dialogue Commute',
       duration: data.total_duration,
       rate: activeRate,
+      autoLoop: isLooping,
     });
+
+    await ensureInitialSM2Schedule(data.conversation_id);
+    refreshLearningStates();
   }
 
   async function loadInitialDialogue() {
@@ -250,8 +344,67 @@ export const PlayerScreen: React.FC = () => {
     }
   }, [activeSegmentIndex, activeTab, dialogue.segments.length]);
 
+  // Dynamic Player Shadowing Pause Mode (when user enables shadowingPauseSec > 0 on a standard 0.4s track)
+  useEffect(() => {
+    const bakedSilence = dialogue.silence_sec ?? 0.4;
+    // Only dynamically pause in player if user enabled shadowingPauseSec > 0 and track doesn't already have >=1.5s FFmpeg silence
+    if (
+      shadowingPauseSec <= 0 ||
+      bakedSilence >= 1.5 ||
+      !isPlaying ||
+      isDynamicShadowingWait ||
+      activeSegmentIndex === -1
+    ) {
+      return;
+    }
+
+    const seg = dialogue.segments[activeSegmentIndex];
+    if (!seg) return;
+
+    // Trigger at the end of the current speaker's sentence
+    if (
+      position >= seg.end - 0.05 &&
+      position <= seg.end + 0.3 &&
+      lastShadowedSegIdRef.current !== seg.id
+    ) {
+      lastShadowedSegIdRef.current = seg.id;
+      setIsDynamicShadowingWait(true);
+      pauseAudio().catch(() => {});
+
+      if (shadowingTimeoutRef.current) {
+        clearTimeout(shadowingTimeoutRef.current);
+      }
+      shadowingTimeoutRef.current = setTimeout(() => {
+        setIsDynamicShadowingWait(false);
+        playAudio().catch(() => {});
+      }, shadowingPauseSec * 1000);
+    }
+  }, [
+    position,
+    isPlaying,
+    activeSegmentIndex,
+    shadowingPauseSec,
+    dialogue.silence_sec,
+    dialogue.segments,
+    isDynamicShadowingWait,
+  ]);
+
+  // Clear pending shadowing timer on unmount
+  useEffect(() => {
+    return () => {
+      if (shadowingTimeoutRef.current) {
+        clearTimeout(shadowingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Transport controls
   async function handlePlayPause() {
+    if (shadowingTimeoutRef.current) {
+      clearTimeout(shadowingTimeoutRef.current);
+      shadowingTimeoutRef.current = null;
+      setIsDynamicShadowingWait(false);
+    }
     if (isPlaying) {
       await pauseAudio();
     } else {
@@ -265,6 +418,12 @@ export const PlayerScreen: React.FC = () => {
     const nextRate = rates[nextIdx];
     setPlaybackRate(nextRate);
     await setPlayerRate(nextRate);
+  }
+
+  async function handleToggleLoop() {
+    const nextLoop = !isLooping;
+    setIsLooping(nextLoop);
+    await setPlayerRepeatMode(nextLoop);
   }
 
   const handleJumpToLine = useCallback(
@@ -424,6 +583,32 @@ export const PlayerScreen: React.FC = () => {
                 <Text style={styles.downloadQuickTagText}>⬇ Lưu máy</Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              style={[
+                styles.awakeTag,
+                keepScreenAwake && styles.awakeTagActive,
+              ]}
+              onPress={() => setKeepScreenAwake((prev) => !prev)}
+            >
+              <Text
+                style={[
+                  styles.awakeTagText,
+                  keepScreenAwake && styles.awakeTagTextActive,
+                ]}
+              >
+                {keepScreenAwake ? '🔆 Giữ sáng' : '🌙 Tự tắt'}
+              </Text>
+            </TouchableOpacity>
+            {shadowingPauseSec > 0 && (
+              <TouchableOpacity
+                style={[styles.awakeTag, styles.awakeTagActive]}
+                onPress={() => setActiveTab('import')}
+              >
+                <Text style={[styles.awakeTagText, styles.awakeTagTextActive]}>
+                  🗣 Nhẩm {shadowingPauseSec}s
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {dialogue.title}
@@ -464,6 +649,26 @@ export const PlayerScreen: React.FC = () => {
               ➕ Tạo mới
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.navBtn,
+              activeTab === 'study' && styles.activeNavBtn,
+            ]}
+            onPress={() => {
+              refreshLearningStates();
+              setActiveTab('study');
+            }}
+          >
+            <Text
+              style={[
+                styles.navBtnText,
+                activeTab === 'study' && styles.activeNavBtnText,
+              ]}
+            >
+              📖 Ôn tập{dueReviewCount > 0 ? ` (${dueReviewCount})` : ''}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -479,12 +684,50 @@ export const PlayerScreen: React.FC = () => {
         />
       ) : activeTab === 'import' ? (
         <ImportScreen
+          shadowingPauseSec={shadowingPauseSec}
+          onShadowingPauseChange={setShadowingPauseSecState}
           onDialogueCreated={async (newDialogue) => {
             setDialogue(newDialogue);
             lastScrolledIndex.current = -1;
+            lastShadowedSegIdRef.current = null;
             await setupTrack(newDialogue);
             setActiveTab('player');
             await playAudio();
+          }}
+          onClose={() => setActiveTab('player')}
+        />
+      ) : activeTab === 'study' ? (
+        <StudyDeckScreen
+          onSelectBookmarkedSentence={async (convId, _segId, startSec) => {
+            try {
+              const cached = await getOfflineDialogue(convId);
+              const fullData = cached || (await fetchDialogue(convId));
+              setDialogue(fullData);
+              await setupTrack(fullData);
+              setActiveTab('player');
+              await seekPlayerTo(startSec);
+              await playAudio();
+            } catch (err: any) {
+              Alert.alert(
+                'Không thể mở câu',
+                err?.message || 'Không tìm thấy bài hội thoại'
+              );
+            }
+          }}
+          onSelectReviewDialogue={async (convId) => {
+            try {
+              const cached = await getOfflineDialogue(convId);
+              const fullData = cached || (await fetchDialogue(convId));
+              setDialogue(fullData);
+              await setupTrack(fullData);
+              setActiveTab('player');
+              await playAudio();
+            } catch (err: any) {
+              Alert.alert(
+                'Không thể mở bài ôn',
+                err?.message || 'Không tìm thấy bài hội thoại'
+              );
+            }
           }}
           onClose={() => setActiveTab('player')}
         />
@@ -504,15 +747,33 @@ export const PlayerScreen: React.FC = () => {
               });
             }, 100);
           }}
-          renderItem={({ item, index }) => (
-            <KaraokeLine
-              segment={item}
-              currentTime={position}
-              isActive={index === activeSegmentIndex}
-              onWordPress={handleWordPress}
-              onLinePress={handleJumpToLine}
-            />
-          )}
+          renderItem={({ item, index }) => {
+            const isActiveSeg = index === activeSegmentIndex;
+            const bakedSilence = dialogue.silence_sec ?? 0.4;
+            const isBakedSilenceGap =
+              isActiveSeg &&
+              (shadowingPauseSec > 0 || bakedSilence >= 1.5) &&
+              position > item.end + 0.05;
+            const isShadowingPauseActive =
+              isActiveSeg && (isDynamicShadowingWait || isBakedSilenceGap);
+            const sentenceBookmarkId = makeSentenceBookmarkId(
+              dialogue.conversation_id,
+              item.id
+            );
+
+            return (
+              <KaraokeLine
+                segment={item}
+                currentTime={position}
+                isActive={isActiveSeg}
+                isShadowingPauseActive={isShadowingPauseActive}
+                isBookmarked={bookmarkedIds.has(sentenceBookmarkId)}
+                onToggleBookmark={handleToggleBookmarkSentence}
+                onWordPress={handleWordPress}
+                onLinePress={handleJumpToLine}
+              />
+            );
+          }}
         />
       )}
 
@@ -522,10 +783,12 @@ export const PlayerScreen: React.FC = () => {
         position={position}
         duration={duration}
         rate={playbackRate}
+        isLooping={isLooping}
         onPlayPause={handlePlayPause}
         onSeekToStartOfSegment={smartRewindToSentenceStart}
         onSeekForward={smartSkipToNextSentence}
         onToggleRate={handleToggleRate}
+        onToggleLoop={handleToggleLoop}
         onSeekToPosition={seekPlayerTo}
       />
 
@@ -534,6 +797,11 @@ export const PlayerScreen: React.FC = () => {
         visible={sheetVisible}
         loading={lookupLoading}
         lookupData={lookupData}
+        isWordSaved={Boolean(
+          lookupData?.word &&
+            savedVocabIds.has(lookupData.word.toLowerCase().trim())
+        )}
+        onSaveWord={handleSaveWordFromSheet}
         onClose={handleCloseTranslationSheet}
       />
     </SafeAreaView>
@@ -594,6 +862,26 @@ const styles = StyleSheet.create({
     color: '#CCCCCC',
     fontSize: 10,
     fontWeight: '700',
+  },
+  awakeTag: {
+    backgroundColor: '#252525',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#3A3A3A',
+  },
+  awakeTagActive: {
+    backgroundColor: 'rgba(29, 185, 84, 0.16)',
+    borderColor: '#1DB954',
+  },
+  awakeTagText: {
+    color: '#999999',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  awakeTagTextActive: {
+    color: '#1DB954',
   },
   headerTitle: {
     fontSize: 17,

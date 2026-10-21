@@ -2,9 +2,44 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DialogueData, DialogueSummary, WordLookupResult } from '../types';
 
 const API_URL_STORAGE_KEY = '@audiotool_api_base_url';
+const SHADOWING_PAUSE_STORAGE_KEY = '@audiotool_shadowing_pause_sec';
 
 // Default Mac LAN IP for iPhone 13 (iOS 18.1) connection over Wi-Fi
 let API_BASE_URL = 'http://192.168.1.220:8000';
+// 0 = Off (uses standard 0.4s natural gap); >0 = Shadowing Pause in seconds (e.g. 2.0 or 3.0)
+let SHADOWING_PAUSE_SEC = 0;
+
+export async function loadSavedShadowingPause(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(SHADOWING_PAUSE_STORAGE_KEY);
+    if (raw !== null) {
+      const parsed = parseFloat(raw);
+      if (!Number.isNaN(parsed) && parsed >= 0) {
+        SHADOWING_PAUSE_SEC = parsed;
+      }
+    }
+  } catch {
+    // Ignore storage read error
+  }
+  return SHADOWING_PAUSE_SEC;
+}
+
+export async function setShadowingPauseSec(seconds: number): Promise<number> {
+  SHADOWING_PAUSE_SEC = Math.max(0, seconds);
+  try {
+    await AsyncStorage.setItem(
+      SHADOWING_PAUSE_STORAGE_KEY,
+      String(SHADOWING_PAUSE_SEC)
+    );
+  } catch {
+    // Ignore storage write error
+  }
+  return SHADOWING_PAUSE_SEC;
+}
+
+export function getShadowingPauseSec(): number {
+  return SHADOWING_PAUSE_SEC;
+}
 
 export async function loadSavedApiBaseUrl(): Promise<string> {
   try {
@@ -86,13 +121,22 @@ export async function fetchDialogueList(): Promise<{ dialogues: DialogueSummary[
   return res.json();
 }
 
-export async function createDialogue(script: string, title?: string): Promise<DialogueData> {
+export async function createDialogue(
+  script: string,
+  title?: string,
+  pauseBetweenSpeakers?: number
+): Promise<DialogueData> {
+  const effectivePause =
+    pauseBetweenSpeakers && pauseBetweenSpeakers > 0
+      ? pauseBetweenSpeakers
+      : 0.4;
   const res = await fetch(`${API_BASE_URL}/api/dialogue/create`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       script,
       title: (title && title.trim()) || 'English Conversation',
+      pause_between_speakers: effectivePause,
     }),
   });
   if (!res.ok) {

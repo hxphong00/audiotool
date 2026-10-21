@@ -18,6 +18,24 @@ def test_get_speaker_profile_and_gender():
     assert p_alex["voice"] != p_sarah["voice"]
 
 
+def test_get_speaker_profile_multi_country_accents():
+    uk_state = {}
+    uk_alex = get_speaker_profile("Alex", uk_state, accent="uk")
+    uk_sarah = get_speaker_profile("Sarah", uk_state, accent="uk")
+    assert uk_alex["voice"] == "en-GB-RyanNeural"
+    assert uk_sarah["voice"] == "en-GB-SoniaNeural"
+
+    au_state = {}
+    au_alex = get_speaker_profile("Alex", au_state, accent="au")
+    au_sarah = get_speaker_profile("Sarah", au_state, accent="au")
+    assert au_alex["voice"] == "en-AU-WilliamNeural"
+    assert au_sarah["voice"] == "en-AU-NatashaNeural"
+
+    ca_state = {}
+    ca_alex = get_speaker_profile("Alex", ca_state, accent="ca")
+    assert ca_alex["voice"] == "en-CA-LiamNeural"
+
+
 def test_align_words_with_punctuation():
     raw_words = [
         {"word": "Hey", "start": 0.0, "end": 0.3},

@@ -13,10 +13,12 @@ interface AudioControlsProps {
   position: number;
   duration: number;
   rate: number;
+  isLooping: boolean;
   onPlayPause: () => void;
   onSeekToStartOfSegment: () => void;
   onSeekForward: () => void;
   onToggleRate: () => void;
+  onToggleLoop: () => void;
   onSeekToPosition?: (seconds: number) => void;
 }
 
@@ -32,10 +34,12 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
   position,
   duration,
   rate,
+  isLooping,
   onPlayPause,
   onSeekToStartOfSegment,
   onSeekForward,
   onToggleRate,
+  onToggleLoop,
   onSeekToPosition,
 }) => {
   const [barWidth, setBarWidth] = useState(0);
@@ -88,7 +92,7 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
           activeOpacity={0.7}
         >
           <Text style={styles.iconText}>⏮</Text>
-          <Text style={styles.iconSubText}>Đầu câu / Lùi</Text>
+          <Text style={styles.iconSubText}>Đầu câu</Text>
         </TouchableOpacity>
 
         {/* Main Play / Pause */}
@@ -109,6 +113,17 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
           <Text style={styles.iconText}>⏭</Text>
           <Text style={styles.iconSubText}>Câu tiếp</Text>
         </TouchableOpacity>
+
+        {/* Auto-Loop / Replay Toggle */}
+        <TouchableOpacity
+          style={[styles.loopBtn, isLooping && styles.loopBtnActive]}
+          onPress={onToggleLoop}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.loopBtnText, isLooping && styles.loopBtnTextActive]}>
+            🔁 {isLooping ? 'Lặp' : '1 lần'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -119,7 +134,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#121212',
     borderTopWidth: 1,
     borderTopColor: '#282828',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 24,
   },
@@ -155,26 +170,50 @@ const styles = StyleSheet.create({
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     marginTop: 4,
   },
   rateBtn: {
     backgroundColor: '#242424',
-    paddingHorizontal: 12,
+    paddingHorizontal: 11,
     paddingVertical: 8,
     borderRadius: 16,
-    minWidth: 54,
+    minWidth: 52,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   rateBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
+  loopBtn: {
+    backgroundColor: '#242424',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 16,
+    minWidth: 68,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  loopBtnActive: {
+    backgroundColor: 'rgba(29, 185, 84, 0.18)',
+    borderColor: '#1DB954',
+  },
+  loopBtnText: {
+    color: '#999999',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  loopBtnTextActive: {
+    color: '#1DB954',
+  },
   iconBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
+    padding: 6,
   },
   iconText: {
     fontSize: 22,
@@ -187,9 +226,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   playPauseBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     backgroundColor: '#1DB954',
     alignItems: 'center',
     justifyContent: 'center',
@@ -200,7 +239,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   playPauseText: {
-    fontSize: 26,
+    fontSize: 25,
     color: '#000000',
   },
 });

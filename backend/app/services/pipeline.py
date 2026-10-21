@@ -18,11 +18,13 @@ async def process_dialogue(
     storage_dir: str = "app/storage",
     base_url: str = "http://localhost:8000",
     silence_sec: float = 0.4,
+    accent: str = "us",
+    emotion: str = "natural",
 ) -> Dict[str, Any]:
     """
     Complete end-to-end pipeline:
     1. Parse raw dialogue script.
-    2. Assign gender-aware voices per speaker and synthesize audio with WordBoundary timestamps.
+    2. Assign gender-aware voices per speaker (with accent & emotion) and synthesize audio with WordBoundary timestamps.
     3. Translate each segment to Vietnamese asynchronously.
     4. Stitch all audio into a single 24kHz mono MP3 stream with natural 400ms silence gaps.
     5. Calculate exact cumulative timestamps matching the final MP3.
@@ -44,12 +46,14 @@ async def process_dialogue(
     intermediate_segments = []
     speakers_meta: Dict[str, Dict[str, str]] = {}
     session_voice_map: Dict[str, Dict[str, str]] = {}
+    clean_accent = (accent or "us").strip().lower()
+    clean_emotion = (emotion or "natural").strip().lower()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         for idx, item in enumerate(raw_segments):
             speaker = item["speaker"]
             text = item["text"]
-            profile = get_speaker_profile(speaker, session_voice_map)
+            profile = get_speaker_profile(speaker, session_voice_map, accent=clean_accent)
             voice = profile["voice"]
 
             if speaker not in speakers_meta:
@@ -57,10 +61,13 @@ async def process_dialogue(
                     "name": speaker,
                     "voice": voice,
                     "gender": profile["gender"],
+                    "accent": profile.get("accent", clean_accent),
                 }
 
             seg_audio_tmp = os.path.join(tmpdir, f"seg_{idx}.mp3")
-            tts_res = await generate_segment_tts(text, voice, seg_audio_tmp)
+            tts_res = await generate_segment_tts(
+                text, voice, seg_audio_tmp, emotion=clean_emotion
+            )
             temp_audio_files.append(seg_audio_tmp)
 
             text_vi = await asyncio.to_thread(translate_text, text, "vi")
@@ -100,6 +107,9 @@ async def process_dialogue(
         "title": title or "English Conversation",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "total_duration": total_duration,
+        "silence_sec": round(float(silence_sec), 2),
+        "accent": clean_accent,
+        "emotion": clean_emotion,
         "audio_url": f"{clean_base}/static/{audio_filename}",
         "audio_stream_url": f"{clean_base}/api/audio/{conversation_id}/stream",
         "offline_filename": audio_filename,

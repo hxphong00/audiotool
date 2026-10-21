@@ -12,12 +12,16 @@ import {
 import {
   createDialogue,
   getApiBaseUrl,
+  getShadowingPauseSec,
   setApiBaseUrl,
+  setShadowingPauseSec,
 } from '../services/apiService';
 import { saveDialogueOffline } from '../services/storageService';
 import { DialogueData } from '../types';
 
 interface ImportScreenProps {
+  shadowingPauseSec: number;
+  onShadowingPauseChange: (sec: number) => void;
   onDialogueCreated: (dialogue: DialogueData) => void;
   onClose: () => void;
 }
@@ -43,11 +47,22 @@ const PRESET_TEMPLATES = [
   },
 ];
 
+const SHADOWING_OPTIONS = [
+  { label: 'Tắt (Chuẩn 0.4s)', value: 0 },
+  { label: '🗣 Nghỉ 2.0 giây', value: 2.0 },
+  { label: '🗣 Nghỉ 3.0 giây', value: 3.0 },
+];
+
 export const ImportScreen: React.FC<ImportScreenProps> = ({
+  shadowingPauseSec,
+  onShadowingPauseChange,
   onDialogueCreated,
   onClose,
 }) => {
   const [ipInput, setIpInput] = useState(getApiBaseUrl());
+  const [selectedPauseSec, setSelectedPauseSec] = useState<number>(
+    shadowingPauseSec ?? getShadowingPauseSec()
+  );
   const [titleInput, setTitleInput] = useState('Daily Commute Conversation');
   const [scriptInput, setScriptInput] = useState(PRESET_TEMPLATES[0].script);
   const [loading, setLoading] = useState(false);
@@ -90,7 +105,8 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
 
       const created = await createDialogue(
         scriptInput,
-        titleInput.trim() || 'English Conversation'
+        titleInput.trim() || 'English Conversation',
+        selectedPauseSec > 0 ? selectedPauseSec : 0.4
       );
 
       // Automatically cache newly created lesson offline onto iPhone storage
@@ -157,9 +173,47 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
         </View>
       </View>
 
+      {/* Section 1.5: Shadowing Pause Mode Setting */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionLabel}>
+          2. CHẾ ĐỘ TỰ NHẨM (SHADOWING PAUSE MODE)
+        </Text>
+        <Text style={styles.settingDesc}>
+          Tự động chèn khoảng lặng 2–3 giây sau mỗi câu thoại để bạn nhẩm nhắc lại thành tiếng khi đội mũ bảo hiểm / lái xe trước khi nhân vật tiếp theo đối đáp. (Mặc định: Tắt)
+        </Text>
+        <View style={styles.presetsRow}>
+          {SHADOWING_OPTIONS.map((opt) => {
+            const isSelected = selectedPauseSec === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.label}
+                style={[
+                  styles.presetChip,
+                  isSelected && styles.presetChipActive,
+                ]}
+                onPress={async () => {
+                  setSelectedPauseSec(opt.value);
+                  await setShadowingPauseSec(opt.value);
+                  onShadowingPauseChange(opt.value);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.presetChipText,
+                    isSelected && styles.presetChipTextActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
       {/* Section 2: Quick Templates */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionLabel}>2. CHỌN NHANH KỊCH BẢN MẪU</Text>
+        <Text style={styles.sectionLabel}>3. CHỌN NHANH KỊCH BẢN MẪU</Text>
         <View style={styles.presetsRow}>
           {PRESET_TEMPLATES.map((tpl) => (
             <TouchableOpacity
@@ -303,15 +357,29 @@ const styles = StyleSheet.create({
   presetChip: {
     backgroundColor: '#262626',
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#363636',
+  },
+  presetChipActive: {
+    backgroundColor: 'rgba(29, 185, 84, 0.2)',
+    borderColor: '#1DB954',
   },
   presetChipText: {
     color: '#E0E0E0',
     fontSize: 12,
     fontWeight: '600',
+  },
+  presetChipTextActive: {
+    color: '#1DB954',
+    fontWeight: '800',
+  },
+  settingDesc: {
+    color: '#9E9E9E',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 10,
   },
   fieldLabel: {
     color: '#BBBBBB',
