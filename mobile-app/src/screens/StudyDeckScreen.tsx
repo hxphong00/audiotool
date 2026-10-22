@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   BookmarkedSentence,
   SavedVocabItem,
@@ -23,6 +24,12 @@ import {
   removeSentenceBookmark,
   removeWordFromVocabulary,
 } from '../services/learningService';
+import { IOS_COLORS, IOS_TYPOGRAPHY } from '../theme/iosTheme';
+import {
+  triggerLightHaptic,
+  triggerSelectionHaptic,
+  triggerSuccessHaptic,
+} from '../utils/haptics';
 
 interface StudyDeckScreenProps {
   onSelectBookmarkedSentence: (
@@ -39,12 +46,10 @@ type SubTab = 'vocab' | 'sentences' | 'sm2';
 export const StudyDeckScreen: React.FC<StudyDeckScreenProps> = ({
   onSelectBookmarkedSentence,
   onSelectReviewDialogue,
-  onClose,
 }) => {
   const [subTab, setSubTab] = useState<SubTab>('vocab');
   const [loading, setLoading] = useState(true);
 
-  // Data states
   const [vocabList, setVocabList] = useState<SavedVocabItem[]>([]);
   const [sentenceList, setSentenceList] = useState<BookmarkedSentence[]>([]);
   const [sm2Records, setSm2Records] = useState<
@@ -71,13 +76,14 @@ export const StudyDeckScreen: React.FC<StudyDeckScreenProps> = ({
     loadAllData();
   }, [loadAllData]);
 
-  // Actions
   async function handleDeleteWord(id: string) {
+    triggerLightHaptic();
     const updated = await removeWordFromVocabulary(id);
     setVocabList(updated);
   }
 
   async function handleDeleteBookmark(id: string) {
+    triggerLightHaptic();
     const updated = await removeSentenceBookmark(id);
     setSentenceList(updated);
   }
@@ -86,77 +92,89 @@ export const StudyDeckScreen: React.FC<StudyDeckScreenProps> = ({
     conversationId: string,
     quality: 3 | 4 | 5
   ) {
+    triggerSuccessHaptic();
     const updated = await recordDialogueReviewSM2(conversationId, quality);
     setSm2Records((prev) => ({
       ...prev,
       [conversationId]: updated,
     }));
     Alert.alert(
-      'Đã ghi nhận ôn tập ✓',
+      'Đã ghi nhận ôn tập',
       `Bài đã được xếp lịch cho chu kỳ tiếp theo (${updated.interval_days} ngày tới).`
     );
   }
 
-  // Count due for badge
   const dueCount = Object.values(sm2Records).filter((r) => isSM2Due(r)).length;
 
   return (
     <View style={styles.container}>
       {/* Top Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerCategory}>GHI NHỚ & ÔN TẬP</Text>
-          <Text style={styles.headerTitle}>Sổ tay Cá nhân</Text>
-        </View>
-        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-          <Text style={styles.closeBtnText}>✕ Đóng</Text>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Sổ tay & Ôn tập</Text>
+        <Text style={styles.headerSubtitle}>
+          Từ vựng đã tra, câu đánh dấu & lịch lặp lại ngắt quãng SM-2
+        </Text>
       </View>
 
-      {/* Sub Tabs */}
-      <View style={styles.tabBar}>
+      {/* Native iOS Segmented Control */}
+      <View style={styles.segmentedBar}>
         <TouchableOpacity
-          style={[styles.tabBtn, subTab === 'vocab' && styles.activeTabBtn]}
-          onPress={() => setSubTab('vocab')}
+          style={[
+            styles.segmentBtn,
+            subTab === 'vocab' && styles.activeSegmentBtn,
+          ]}
+          onPress={() => {
+            triggerSelectionHaptic();
+            setSubTab('vocab');
+          }}
         >
           <Text
             style={[
-              styles.tabBtnText,
-              subTab === 'vocab' && styles.activeTabBtnText,
+              styles.segmentBtnText,
+              subTab === 'vocab' && styles.activeSegmentBtnText,
             ]}
           >
-            📖 Từ vựng ({vocabList.length})
+            Từ vựng ({vocabList.length})
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[
-            styles.tabBtn,
-            subTab === 'sentences' && styles.activeTabBtn,
+            styles.segmentBtn,
+            subTab === 'sentences' && styles.activeSegmentBtn,
           ]}
-          onPress={() => setSubTab('sentences')}
+          onPress={() => {
+            triggerSelectionHaptic();
+            setSubTab('sentences');
+          }}
         >
           <Text
             style={[
-              styles.tabBtnText,
-              subTab === 'sentences' && styles.activeTabBtnText,
+              styles.segmentBtnText,
+              subTab === 'sentences' && styles.activeSegmentBtnText,
             ]}
           >
-            ⭐ Câu khó ({sentenceList.length})
+            Câu lưu ({sentenceList.length})
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabBtn, subTab === 'sm2' && styles.activeTabBtn]}
-          onPress={() => setSubTab('sm2')}
+          style={[
+            styles.segmentBtn,
+            subTab === 'sm2' && styles.activeSegmentBtn,
+          ]}
+          onPress={() => {
+            triggerSelectionHaptic();
+            setSubTab('sm2');
+          }}
         >
           <Text
             style={[
-              styles.tabBtnText,
-              subTab === 'sm2' && styles.activeTabBtnText,
+              styles.segmentBtnText,
+              subTab === 'sm2' && styles.activeSegmentBtnText,
             ]}
           >
-            🔔 Ôn tập SM-2 {dueCount > 0 ? `(${dueCount})` : ''}
+            Lịch SM-2{dueCount > 0 ? ` (${dueCount})` : ''}
           </Text>
         </TouchableOpacity>
       </View>
@@ -164,18 +182,20 @@ export const StudyDeckScreen: React.FC<StudyDeckScreenProps> = ({
       {/* Content Area */}
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#1DB954" />
+          <ActivityIndicator size="large" color={IOS_COLORS.systemBlue} />
           <Text style={styles.loadingText}>Đang tải dữ liệu học tập...</Text>
         </View>
       ) : subTab === 'vocab' ? (
-        // Tab 1: Saved Vocab Deck
         vocabList.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>📖</Text>
+            <Ionicons
+              name="book-outline"
+              size={48}
+              color={IOS_COLORS.tertiaryLabel}
+            />
             <Text style={styles.emptyTitle}>Chưa có từ vựng nào</Text>
             <Text style={styles.emptySubtitle}>
-              Khi nghe hội thoại, chạm vào bất kỳ từ nào rồi bấm "Lưu từ này" để
-              xem lại tại đây.
+              Khi nghe hội thoại, nhấn giữ vào bất kỳ từ nào rồi bấm "Lưu vào sổ tay" để ôn lại tại đây.
             </Text>
           </View>
         ) : (
@@ -196,7 +216,11 @@ export const StudyDeckScreen: React.FC<StudyDeckScreenProps> = ({
                     style={styles.deleteBtn}
                     onPress={() => handleDeleteWord(item.id)}
                   >
-                    <Text style={styles.deleteBtnText}>🗑</Text>
+                    <Ionicons
+                      name="trash-outline"
+                      size={18}
+                      color={IOS_COLORS.systemRed}
+                    />
                   </TouchableOpacity>
                 </View>
 
@@ -208,7 +232,7 @@ export const StudyDeckScreen: React.FC<StudyDeckScreenProps> = ({
                   <View style={styles.contextWrap}>
                     <Text style={styles.contextEn}>“{item.context_en}”</Text>
                     {Boolean(item.context_vi) && (
-                      <Text style={styles.contextVi}>➔ {item.context_vi}</Text>
+                      <Text style={styles.contextVi}>{item.context_vi}</Text>
                     )}
                   </View>
                 )}
@@ -217,14 +241,16 @@ export const StudyDeckScreen: React.FC<StudyDeckScreenProps> = ({
           />
         )
       ) : subTab === 'sentences' ? (
-        // Tab 2: Bookmarked Sentences
         sentenceList.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>⭐</Text>
+            <Ionicons
+              name="bookmark-outline"
+              size={48}
+              color={IOS_COLORS.tertiaryLabel}
+            />
             <Text style={styles.emptyTitle}>Chưa có câu nào được lưu</Text>
             <Text style={styles.emptySubtitle}>
-              Bấm biểu tượng ngôi sao ☆ cạnh tên nhân vật trên màn hình nghe để
-              đánh dấu các câu nói khó / hay.
+              Bấm biểu tượng đánh dấu cạnh tên nhân vật trên màn hình nghe để lưu lại các câu nói hay.
             </Text>
           </View>
         ) : (
@@ -235,25 +261,36 @@ export const StudyDeckScreen: React.FC<StudyDeckScreenProps> = ({
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.card}
-                onPress={() =>
+                activeOpacity={0.75}
+                onPress={() => {
+                  triggerSelectionHaptic();
                   onSelectBookmarkedSentence(
                     item.conversation_id,
                     item.segment_id,
                     item.start
-                  )
-                }
+                  );
+                }}
               >
                 <View style={styles.cardHeader}>
                   <View style={styles.sentenceSpeakerBadge}>
+                    <Ionicons
+                      name="mic-outline"
+                      size={12}
+                      color={IOS_COLORS.systemBlue}
+                    />
                     <Text style={styles.sentenceSpeakerText}>
-                      🎙 {item.speaker} ({item.start.toFixed(1)}s)
+                      {item.speaker} • {item.start.toFixed(1)}s
                     </Text>
                   </View>
                   <TouchableOpacity
                     style={styles.deleteBtn}
                     onPress={() => handleDeleteBookmark(item.id)}
                   >
-                    <Text style={styles.deleteBtnText}>✕ Bỏ lưu</Text>
+                    <Ionicons
+                      name="trash-outline"
+                      size={17}
+                      color={IOS_COLORS.systemRed}
+                    />
                   </TouchableOpacity>
                 </View>
 
@@ -262,105 +299,117 @@ export const StudyDeckScreen: React.FC<StudyDeckScreenProps> = ({
 
                 <View style={styles.sentenceFooter}>
                   <Text style={styles.dialogueSourceText} numberOfLines={1}>
-                    📚 {item.dialogue_title || 'Bài hội thoại'}
+                    {item.dialogue_title || 'Bài hội thoại'}
                   </Text>
-                  <Text style={styles.playHintText}>Bấm để phát ▶</Text>
+                  <View style={styles.playHintRow}>
+                    <Text style={styles.playHintText}>Phát câu này</Text>
+                    <Ionicons
+                      name="play-circle"
+                      size={16}
+                      color={IOS_COLORS.systemBlue}
+                    />
+                  </View>
                 </View>
               </TouchableOpacity>
             )}
           />
         )
+      ) : Object.keys(sm2Records).length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons
+            name="notifications-outline"
+            size={48}
+            color={IOS_COLORS.tertiaryLabel}
+          />
+          <Text style={styles.emptyTitle}>Chưa có bài nào trong chu kỳ</Text>
+          <Text style={styles.emptySubtitle}>
+            Mỗi khi bạn mở 1 bài hội thoại, hệ thống sẽ tự động xếp lịch ôn tập sau 1, 3 và 7 ngày theo thuật toán Anki SM-2.
+          </Text>
+        </View>
       ) : (
-        // Tab 3: Spaced Repetition (Anki SM-2)
-        Object.keys(sm2Records).length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>🔔</Text>
-            <Text style={styles.emptyTitle}>Chưa có bài nào trong chu kỳ</Text>
-            <Text style={styles.emptySubtitle}>
-              Mỗi khi bạn nghe xong 1 bài hội thoại, hệ thống sẽ tự động xếp
-              lịch ôn tập sau 1 ngày, 3 ngày và 7 ngày theo thuật toán SM-2.
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={Object.values(sm2Records)}
-            keyExtractor={(item) => item.conversation_id}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => {
-              const status = formatSM2StatusLabel(item);
-              return (
-                <View style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.sm2ConvTitle} numberOfLines={1}>
-                      ID: {item.conversation_id}
-                    </Text>
-                    <View
+        <FlatList
+          data={Object.values(sm2Records)}
+          keyExtractor={(item) => item.conversation_id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => {
+            const status = formatSM2StatusLabel(item);
+            return (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.sm2ConvTitle} numberOfLines={1}>
+                    Bài học: {item.conversation_id}
+                  </Text>
+                  <View
+                    style={[
+                      styles.sm2Badge,
+                      status.isDue ? styles.sm2BadgeDue : styles.sm2BadgeWait,
+                    ]}
+                  >
+                    <Text
                       style={[
-                        styles.sm2Badge,
-                        status.isDue ? styles.sm2BadgeDue : styles.sm2BadgeWait,
+                        styles.sm2BadgeText,
+                        status.isDue
+                          ? styles.sm2BadgeTextDue
+                          : styles.sm2BadgeTextWait,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.sm2BadgeText,
-                          status.isDue
-                            ? styles.sm2BadgeTextDue
-                            : styles.sm2BadgeTextWait,
-                        ]}
-                      >
-                        {status.label}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.sm2DetailText}>
-                    Chu kỳ: {item.interval_days} ngày • Đã ôn: {item.repetitions}{' '}
-                    lần • Hệ số dễ (Ease): {item.ease_factor}
-                  </Text>
-
-                  {/* Rating Actions for SM-2 */}
-                  <View style={styles.sm2ActionsRow}>
-                    <TouchableOpacity
-                      style={styles.sm2PlayBtn}
-                      onPress={() =>
-                        onSelectReviewDialogue(item.conversation_id)
-                      }
-                    >
-                      <Text style={styles.sm2PlayBtnText}>Nghe lại ▶</Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.rateButtonsGroup}>
-                      <TouchableOpacity
-                        style={[styles.rateBtn, styles.rateBtn3]}
-                        onPress={() =>
-                          handleSM2Rate(item.conversation_id, 3)
-                        }
-                      >
-                        <Text style={styles.rateBtnText}>1d (Khó)</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.rateBtn, styles.rateBtn4]}
-                        onPress={() =>
-                          handleSM2Rate(item.conversation_id, 4)
-                        }
-                      >
-                        <Text style={styles.rateBtnText}>3d (Khá)</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.rateBtn, styles.rateBtn5]}
-                        onPress={() =>
-                          handleSM2Rate(item.conversation_id, 5)
-                        }
-                      >
-                        <Text style={styles.rateBtnText}>7d (Tốt)</Text>
-                      </TouchableOpacity>
-                    </View>
+                      {status.label}
+                    </Text>
                   </View>
                 </View>
-              );
-            }}
-          />
-        )
+
+                <Text style={styles.sm2DetailText}>
+                  Chu kỳ: {item.interval_days} ngày • Đã ôn: {item.repetitions}{' '}
+                  lần • Hệ số Ease: {item.ease_factor}
+                </Text>
+
+                <View style={styles.sm2ActionsRow}>
+                  <TouchableOpacity
+                    style={styles.sm2PlayBtn}
+                    onPress={() => {
+                      triggerSelectionHaptic();
+                      onSelectReviewDialogue(item.conversation_id);
+                    }}
+                  >
+                    <Ionicons
+                      name="play"
+                      size={13}
+                      color={IOS_COLORS.systemBlue}
+                    />
+                    <Text style={styles.sm2PlayBtnText}>Nghe lại</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.rateButtonsGroup}>
+                    <TouchableOpacity
+                      style={[styles.rateBtn, styles.rateBtn3]}
+                      onPress={() => handleSM2Rate(item.conversation_id, 3)}
+                    >
+                      <Text style={[styles.rateBtnText, { color: IOS_COLORS.systemRed }]}>
+                        1d (Khó)
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.rateBtn, styles.rateBtn4]}
+                      onPress={() => handleSM2Rate(item.conversation_id, 4)}
+                    >
+                      <Text style={[styles.rateBtnText, { color: IOS_COLORS.systemOrange }]}>
+                        3d (Khá)
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.rateBtn, styles.rateBtn5]}
+                      onPress={() => handleSM2Rate(item.conversation_id, 5)}
+                    >
+                      <Text style={[styles.rateBtnText, { color: IOS_COLORS.systemGreen }]}>
+                        7d (Tốt)
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            );
+          }}
+        />
       )}
     </View>
   );
@@ -369,66 +418,49 @@ export const StudyDeckScreen: React.FC<StudyDeckScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0E1118',
+    backgroundColor: IOS_COLORS.systemBackground,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#202634',
-  },
-  headerCategory: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#1DB954',
-    letterSpacing: 1.2,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: IOS_COLORS.separator,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    ...IOS_TYPOGRAPHY.title2,
+    color: IOS_COLORS.label,
+  },
+  headerSubtitle: {
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
     marginTop: 2,
   },
-  closeBtn: {
-    backgroundColor: '#202634',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-  },
-  closeBtnText: {
-    color: '#E0E0E0',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  tabBar: {
+  segmentedBar: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#141923',
-    gap: 8,
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    padding: 3,
     borderRadius: 10,
-    backgroundColor: '#1C2331',
+    backgroundColor: IOS_COLORS.secondarySystemGroupedBackground,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 8,
     alignItems: 'center',
   },
-  activeTabBtn: {
-    backgroundColor: '#1DB954',
+  activeSegmentBtn: {
+    backgroundColor: IOS_COLORS.tertiarySystemGroupedBackground,
   },
-  tabBtnText: {
-    color: '#9E9E9E',
-    fontSize: 12,
+  segmentBtnText: {
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
+    fontWeight: '600',
+  },
+  activeSegmentBtnText: {
+    color: IOS_COLORS.label,
     fontWeight: '700',
-  },
-  activeTabBtnText: {
-    color: '#000000',
   },
   centerContainer: {
     flex: 1,
@@ -437,9 +469,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   loadingText: {
-    color: '#9E9E9E',
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.secondaryLabel,
     marginTop: 12,
-    fontSize: 14,
   },
   emptyContainer: {
     flex: 1,
@@ -447,135 +479,123 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 36,
   },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 8,
+    ...IOS_TYPOGRAPHY.headline,
+    color: IOS_COLORS.label,
+    marginTop: 12,
+    marginBottom: 6,
     textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 14,
-    color: '#8892B0',
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.secondaryLabel,
     textAlign: 'center',
-    lineHeight: 22,
   },
   listContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 28,
   },
   card: {
-    backgroundColor: '#161C28',
+    backgroundColor: IOS_COLORS.secondarySystemGroupedBackground,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#242C3E',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: IOS_COLORS.separator,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   wordInfoWrap: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     gap: 8,
   },
   wordText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1DB954',
+    ...IOS_TYPOGRAPHY.title3,
+    color: IOS_COLORS.systemBlue,
+    fontWeight: '700',
   },
   phoneticText: {
-    fontSize: 13,
-    color: '#8892B0',
-    fontStyle: 'italic',
+    ...IOS_TYPOGRAPHY.footnote,
+    color: IOS_COLORS.secondaryLabel,
   },
   deleteBtn: {
     padding: 4,
   },
-  deleteBtnText: {
-    color: '#FF6B6B',
-    fontSize: 13,
-    fontWeight: '600',
-  },
   translationText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...IOS_TYPOGRAPHY.headline,
+    color: IOS_COLORS.label,
     marginBottom: 8,
   },
   contextWrap: {
-    backgroundColor: '#0F131C',
+    backgroundColor: IOS_COLORS.tertiarySystemGroupedBackground,
     padding: 10,
     borderRadius: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: '#1DB954',
   },
   contextEn: {
-    fontSize: 13,
-    color: '#E0E0E0',
-    fontStyle: 'italic',
-    marginBottom: 4,
+    ...IOS_TYPOGRAPHY.footnote,
+    color: IOS_COLORS.label,
+    marginBottom: 3,
   },
   contextVi: {
-    fontSize: 12,
-    color: '#8892B0',
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
   },
   sentenceSpeakerBadge: {
-    backgroundColor: '#202634',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(10, 132, 255, 0.15)',
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   sentenceSpeakerText: {
-    fontSize: 11,
+    ...IOS_TYPOGRAPHY.caption2,
     fontWeight: '700',
-    color: '#1DB954',
+    color: IOS_COLORS.systemBlue,
   },
   sentenceEnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    lineHeight: 22,
-    marginBottom: 6,
+    ...IOS_TYPOGRAPHY.headline,
+    color: IOS_COLORS.label,
+    marginBottom: 4,
   },
   sentenceViText: {
-    fontSize: 14,
-    color: '#A0AEC0',
-    lineHeight: 20,
-    fontStyle: 'italic',
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.secondaryLabel,
     marginBottom: 10,
   },
   sentenceFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#202634',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: IOS_COLORS.separator,
     paddingTop: 8,
   },
   dialogueSourceText: {
-    fontSize: 12,
-    color: '#718096',
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.tertiaryLabel,
     flex: 1,
   },
+  playHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   playHintText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1DB954',
-    marginLeft: 8,
+    ...IOS_TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: IOS_COLORS.systemBlue,
   },
   sm2ConvTitle: {
-    fontSize: 14,
+    ...IOS_TYPOGRAPHY.subheadline,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: IOS_COLORS.label,
     flex: 1,
   },
   sm2Badge: {
@@ -584,24 +604,24 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   sm2BadgeDue: {
-    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    backgroundColor: 'rgba(255, 69, 58, 0.16)',
   },
   sm2BadgeWait: {
-    backgroundColor: 'rgba(29, 185, 84, 0.15)',
+    backgroundColor: 'rgba(48, 209, 88, 0.16)',
   },
   sm2BadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
+    ...IOS_TYPOGRAPHY.caption2,
+    fontWeight: '600',
   },
   sm2BadgeTextDue: {
-    color: '#FF6B6B',
+    color: IOS_COLORS.systemRed,
   },
   sm2BadgeTextWait: {
-    color: '#1DB954',
+    color: IOS_COLORS.systemGreen,
   },
   sm2DetailText: {
-    fontSize: 12,
-    color: '#718096',
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
     marginVertical: 8,
   },
   sm2ActionsRow: {
@@ -612,14 +632,17 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   sm2PlayBtn: {
-    backgroundColor: '#202634',
-    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(10, 132, 255, 0.16)',
+    paddingVertical: 7,
     paddingHorizontal: 12,
-    borderRadius: 20,
+    borderRadius: 14,
   },
   sm2PlayBtnText: {
-    color: '#1DB954',
-    fontSize: 12,
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.systemBlue,
     fontWeight: '700',
   },
   rateButtonsGroup: {
@@ -629,24 +652,19 @@ const styles = StyleSheet.create({
   rateBtn: {
     paddingVertical: 6,
     paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 10,
   },
   rateBtn3: {
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-    borderColor: '#FF6B6B',
+    backgroundColor: 'rgba(255, 69, 58, 0.14)',
   },
   rateBtn4: {
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    borderColor: '#FFD700',
+    backgroundColor: 'rgba(255, 159, 10, 0.14)',
   },
   rateBtn5: {
-    backgroundColor: 'rgba(29, 185, 84, 0.1)',
-    borderColor: '#1DB954',
+    backgroundColor: 'rgba(48, 209, 88, 0.14)',
   },
   rateBtnText: {
-    fontSize: 11,
+    ...IOS_TYPOGRAPHY.caption2,
     fontWeight: '700',
-    color: '#E0E0E0',
   },
 });

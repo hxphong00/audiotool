@@ -1,5 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
+import { IOS_COLORS } from '../theme/iosTheme';
+import { triggerLightHaptic, triggerMediumHaptic } from '../utils/haptics';
 
 interface WordPressableProps {
   word: string;
@@ -15,10 +17,12 @@ export const WordPressable: React.FC<WordPressableProps> = React.memo(
       <Pressable
         onPress={(e) => {
           e.stopPropagation();
+          triggerLightHaptic();
           onPress(word);
         }}
         onLongPress={(e) => {
           e.stopPropagation();
+          triggerMediumHaptic();
           onLongPress?.(word);
         }}
         delayLongPress={350}
@@ -45,38 +49,38 @@ export const WordPressable: React.FC<WordPressableProps> = React.memo(
 const styles = StyleSheet.create({
   wordTouch: {
     paddingVertical: 3,
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
     borderRadius: 8,
     marginVertical: 2,
     marginRight: 2,
   },
   activeWordTouch: {
-    backgroundColor: '#1DB954',
-    shadowColor: '#1DB954',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
+    backgroundColor: IOS_COLORS.systemBlue,
+    shadowColor: IOS_COLORS.systemBlue,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
     elevation: 4,
   },
   pressedWordTouch: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: IOS_COLORS.systemFill,
     transform: [{ scale: 0.96 }],
   },
   wordText: {
     fontSize: 22,
-    lineHeight: 32,
-    letterSpacing: -0.3,
+    lineHeight: 31,
+    letterSpacing: -0.4,
   },
   sentenceActiveWord: {
-    color: '#FFFFFF',
+    color: IOS_COLORS.label,
     fontWeight: '700',
   },
   inactiveWord: {
-    color: 'rgba(255, 255, 255, 0.38)',
+    color: IOS_COLORS.tertiaryLabel,
     fontWeight: '600',
   },
   activeWordText: {
-    color: '#000000',
-    fontWeight: '900',
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
 });

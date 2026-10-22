@@ -4,7 +4,14 @@
     "baseUrl": "..",
     "paths": {
       "react-native": ["tests/mocks/react-native.ts"],
-      "@react-native-async-storage/async-storage": ["tests/mocks/async-storage.ts"]
+      "@react-native-async-storage/async-storage": ["tests/mocks/async-storage.ts"],
+      "@expo/vector-icons": ["tests/mocks/expo-ui-mocks.ts"],
+      "expo-blur": ["tests/mocks/expo-ui-mocks.ts"],
+      "react-native-safe-area-context": ["tests/mocks/expo-ui-mocks.ts"],
+      "react-native-gesture-handler": ["tests/mocks/expo-ui-mocks.ts"],
+      "@gorhom/bottom-sheet": ["tests/mocks/expo-ui-mocks.ts"],
+      "expo-keep-awake": ["tests/mocks/expo-ui-mocks.ts"],
+      "expo-file-system": ["tests/mocks/expo-ui-mocks.ts"]
     }
   }
 }

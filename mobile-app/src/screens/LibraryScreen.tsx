@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { formatTimeMMSS } from '../components/AudioControls';
 import { fetchDialogue } from '../services/apiService';
 import {
@@ -15,6 +16,12 @@ import {
   saveDialogueOffline,
 } from '../services/storageService';
 import { DialogueSummary } from '../types';
+import { IOS_COLORS, IOS_TYPOGRAPHY } from '../theme/iosTheme';
+import {
+  triggerLightHaptic,
+  triggerSelectionHaptic,
+  triggerSuccessHaptic,
+} from '../utils/haptics';
 
 interface LibraryScreenProps {
   dialogues: DialogueSummary[];
@@ -44,11 +51,11 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
   loading,
   onSelectDialogue,
   onRefresh,
-  onClose,
 }) => {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function handleDownloadToggle(item: DialogueSummary) {
+    triggerLightHaptic();
     if (item.is_offline) {
       Alert.alert(
         'Xóa bản tải Offline?',
@@ -72,6 +79,7 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
     try {
       const fullData = await fetchDialogue(item.conversation_id);
       await saveDialogueOffline(fullData);
+      triggerSuccessHaptic();
       onRefresh();
       Alert.alert(
         'Đã tải về iPhone',
@@ -91,25 +99,34 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.title}>Thư Viện Bài Học</Text>
+          <Text style={styles.title}>Thư viện</Text>
           <Text style={styles.subtitle}>
-            Nghe lại mọi lúc • Hỗ trợ lưu Offline trên iPhone
+            Các bài hội thoại đã tạo & tải về iPhone
           </Text>
         </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh}>
-            <Text style={styles.refreshBtnText}>↻ Làm mới</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.backBtn} onPress={onClose}>
-            <Text style={styles.backBtnText}>Đóng ✕</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.refreshBtn}
+          activeOpacity={0.7}
+          onPress={() => {
+            triggerSelectionHaptic();
+            onRefresh();
+          }}
+        >
+          <Ionicons
+            name="refresh"
+            size={16}
+            color={IOS_COLORS.systemBlue}
+          />
+          <Text style={styles.refreshBtnText}>Làm mới</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#1DB954" />
-          <Text style={styles.loadingText}>Đang đồng bộ danh sách bài học...</Text>
+          <ActivityIndicator size="large" color={IOS_COLORS.systemBlue} />
+          <Text style={styles.loadingText}>
+            Đang đồng bộ danh sách bài học...
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -118,8 +135,14 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.centerBox}>
+              <Ionicons
+                name="library-outline"
+                size={48}
+                color={IOS_COLORS.tertiaryLabel}
+              />
+              <Text style={styles.emptyTitle}>Chưa có bài hội thoại</Text>
               <Text style={styles.emptyText}>
-                Chưa có bài hội thoại nào. Hãy chuyển sang mục "➕ Tạo bài mới" để tạo bài nghe đầu tiên!
+                Chuyển sang tab "Tạo bài" ở thanh điều hướng phía dưới để tạo bài nghe đầu tiên.
               </Text>
             </View>
           }
@@ -130,16 +153,38 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
             return (
               <TouchableOpacity
                 style={[styles.card, isCurrent && styles.activeCard]}
-                activeOpacity={0.8}
-                onPress={() => onSelectDialogue(item.conversation_id)}
+                activeOpacity={0.75}
+                onPress={() => {
+                  triggerSelectionHaptic();
+                  onSelectDialogue(item.conversation_id);
+                }}
               >
                 <View style={styles.cardTopRow}>
+                  <View style={styles.artworkIcon}>
+                    <Ionicons
+                      name={isCurrent ? 'volume-high' : 'headset'}
+                      size={22}
+                      color={
+                        isCurrent
+                          ? '#FFFFFF'
+                          : IOS_COLORS.systemBlue
+                      }
+                    />
+                  </View>
+
                   <View style={styles.cardTitleWrap}>
                     <Text style={styles.cardTitle} numberOfLines={2}>
                       {item.title}
                     </Text>
                     {isCurrent && (
-                      <Text style={styles.playingBadge}>● Đang mở</Text>
+                      <View style={styles.playingBadgeRow}>
+                        <Ionicons
+                          name="radio-outline"
+                          size={12}
+                          color={IOS_COLORS.systemBlue}
+                        />
+                        <Text style={styles.playingBadge}>Đang phát</Text>
+                      </View>
                     )}
                   </View>
 
@@ -155,27 +200,82 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
                     disabled={isDownloading}
                   >
                     {isDownloading ? (
-                      <ActivityIndicator size="small" color="#1DB954" />
+                      <ActivityIndicator
+                        size="small"
+                        color={IOS_COLORS.systemBlue}
+                      />
                     ) : (
-                      <Text
-                        style={[
-                          styles.offlineBtnText,
-                          item.is_offline && styles.offlineSavedBtnText,
-                        ]}
-                      >
-                        {item.is_offline ? '✓ Đã lưu máy' : '⬇ Tải về máy'}
-                      </Text>
+                      <>
+                        <Ionicons
+                          name={
+                            item.is_offline
+                              ? 'arrow-down-circle'
+                              : 'cloud-download-outline'
+                          }
+                          size={16}
+                          color={
+                            item.is_offline
+                              ? IOS_COLORS.systemGreen
+                              : IOS_COLORS.secondaryLabel
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.offlineBtnText,
+                            item.is_offline && styles.offlineSavedBtnText,
+                          ]}
+                        >
+                          {item.is_offline ? 'Đã tải' : 'Tải về'}
+                        </Text>
+                      </>
                     )}
                   </TouchableOpacity>
                 </View>
 
+                <View style={styles.cardDivider} />
+
                 <View style={styles.cardMetaRow}>
-                  <Text style={styles.metaText}>
-                    ⏱ {formatTimeMMSS(item.total_duration)} • 💬{' '}
-                    {item.segments_count || 0} câu • 📅{' '}
-                    {formatDateShort(item.created_at)}
-                  </Text>
-                  <Text style={styles.playPrompt}>Nghe ngay ▶</Text>
+                  <View style={styles.metaItemsWrap}>
+                    <View style={styles.metaChip}>
+                      <Ionicons
+                        name="time-outline"
+                        size={13}
+                        color={IOS_COLORS.secondaryLabel}
+                      />
+                      <Text style={styles.metaText}>
+                        {formatTimeMMSS(item.total_duration)}
+                      </Text>
+                    </View>
+                    <View style={styles.metaChip}>
+                      <Ionicons
+                        name="chatbubble-outline"
+                        size={12}
+                        color={IOS_COLORS.secondaryLabel}
+                      />
+                      <Text style={styles.metaText}>
+                        {item.segments_count || 0} câu
+                      </Text>
+                    </View>
+                    <View style={styles.metaChip}>
+                      <Ionicons
+                        name="calendar-outline"
+                        size={12}
+                        color={IOS_COLORS.secondaryLabel}
+                      />
+                      <Text style={styles.metaText}>
+                        {formatDateShort(item.created_at)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.playPromptRow}>
+                    <Text style={styles.playPrompt}>Nghe</Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={14}
+                      color={IOS_COLORS.systemBlue}
+                    />
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -189,63 +289,43 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#090D14',
+    backgroundColor: IOS_COLORS.systemBackground,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
-    backgroundColor: 'rgba(9, 13, 20, 0.95)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: IOS_COLORS.separator,
   },
   title: {
-    color: '#F8FAFC',
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.4,
+    ...IOS_TYPOGRAPHY.title2,
+    color: IOS_COLORS.label,
   },
   subtitle: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 12,
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
     marginTop: 2,
   },
-  headerActions: {
+  refreshBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  refreshBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 5,
+    backgroundColor: IOS_COLORS.secondarySystemGroupedBackground,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: 16,
   },
   refreshBtnText: {
-    color: '#E0E0E0',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  backBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(29, 185, 84, 0.15)',
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: 'rgba(29, 185, 84, 0.3)',
-  },
-  backBtnText: {
-    color: '#1DB954',
-    fontSize: 13,
-    fontWeight: '800',
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.systemBlue,
+    fontWeight: '600',
   },
   listContent: {
     padding: 16,
-    paddingBottom: 36,
+    paddingBottom: 28,
   },
   centerBox: {
     flex: 1,
@@ -254,86 +334,117 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   loadingText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.secondaryLabel,
     marginTop: 12,
-    fontSize: 14,
+  },
+  emptyTitle: {
+    ...IOS_TYPOGRAPHY.headline,
+    color: IOS_COLORS.label,
+    marginTop: 12,
+    marginBottom: 6,
   },
   emptyText: {
-    color: 'rgba(255, 255, 255, 0.5)',
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.secondaryLabel,
     textAlign: 'center',
-    fontSize: 15,
-    lineHeight: 22,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 18,
-    padding: 16,
+    backgroundColor: IOS_COLORS.secondarySystemGroupedBackground,
+    borderRadius: 16,
+    padding: 14,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: IOS_COLORS.separator,
   },
   activeCard: {
-    borderColor: 'rgba(29, 185, 84, 0.45)',
-    backgroundColor: 'rgba(29, 185, 84, 0.1)',
+    borderColor: IOS_COLORS.systemBlue,
+    backgroundColor: 'rgba(10, 132, 255, 0.12)',
   },
   cardTopRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
+    alignItems: 'center',
+    gap: 12,
+  },
+  artworkIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10, 132, 255, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardTitleWrap: {
     flex: 1,
-    marginRight: 10,
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
+    ...IOS_TYPOGRAPHY.headline,
+    color: IOS_COLORS.label,
+  },
+  playingBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
   },
   playingBadge: {
-    color: '#1DB954',
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 4,
+    ...IOS_TYPOGRAPHY.caption2,
+    color: IOS_COLORS.systemBlue,
+    fontWeight: '600',
   },
   offlineBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    minWidth: 96,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+    backgroundColor: IOS_COLORS.tertiarySystemGroupedBackground,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
   offlineSavedBtn: {
-    backgroundColor: 'rgba(29, 185, 84, 0.18)',
-    borderColor: 'rgba(29, 185, 84, 0.45)',
+    backgroundColor: 'rgba(48, 209, 88, 0.15)',
   },
   offlineBtnText: {
-    color: '#E0E0E0',
-    fontSize: 11,
-    fontWeight: '700',
+    ...IOS_TYPOGRAPHY.caption2,
+    color: IOS_COLORS.secondaryLabel,
+    fontWeight: '600',
   },
   offlineSavedBtnText: {
-    color: '#1DB954',
+    color: IOS_COLORS.systemGreen,
+  },
+  cardDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: IOS_COLORS.separator,
+    marginVertical: 10,
   },
   cardMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+  },
+  metaItemsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   metaText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.45)',
-    fontWeight: '500',
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
+    fontVariant: ['tabular-nums'],
+  },
+  playPromptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   playPrompt: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#1DB954',
+    ...IOS_TYPOGRAPHY.caption1,
+    fontWeight: '600',
+    color: IOS_COLORS.systemBlue,
   },
 });

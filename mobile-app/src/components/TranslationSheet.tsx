@@ -11,7 +11,10 @@ import BottomSheet, {
   BottomSheetBackdropProps,
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
+import { Ionicons } from '@expo/vector-icons';
 import { WordLookupResult } from '../types';
+import { IOS_COLORS, IOS_TYPOGRAPHY } from '../theme/iosTheme';
+import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
 
 interface TranslationSheetProps {
   visible: boolean;
@@ -31,7 +34,7 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
   onClose,
 }) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ['52%', '72%'], []);
+  const snapPoints = useMemo(() => ['54%', '76%'], []);
 
   useEffect(() => {
     if (visible) {
@@ -56,7 +59,7 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
         {...props}
         disappearsOnIndex={-1}
         appearsOnIndex={0}
-        opacity={0.65}
+        opacity={0.6}
         pressBehavior="close"
       />
     ),
@@ -79,7 +82,7 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
       handleIndicatorStyle={styles.handleIndicator}
     >
       <BottomSheetView style={styles.sheetContainer}>
-        {/* Header: Word + IPA + Part of Speech */}
+        {/* iOS Look Up Header: Word + IPA + Part of Speech */}
         <View style={styles.header}>
           <View style={styles.wordHeaderLeft}>
             <Text style={styles.wordText}>{lookupData?.word || '...'}</Text>
@@ -91,14 +94,27 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
               )}
               {Boolean(lookupData?.part_of_speech) && (
                 <View style={styles.posBadge}>
-                  <Text style={styles.posText}>{lookupData?.part_of_speech}</Text>
+                  <Text style={styles.posText}>
+                    {lookupData?.part_of_speech}
+                  </Text>
                 </View>
               )}
             </View>
           </View>
 
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Text style={styles.closeBtnText}>✕</Text>
+          <TouchableOpacity
+            onPress={() => {
+              triggerLightHaptic();
+              onClose();
+            }}
+            style={styles.closeBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name="close-circle"
+              size={28}
+              color={IOS_COLORS.tertiaryLabel}
+            />
           </TouchableOpacity>
         </View>
 
@@ -107,12 +123,14 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
         {/* Body: Meaning & Context */}
         {loading ? (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator size="small" color="#1DB954" />
-            <Text style={styles.loadingText}>Đang tra từ điển & ngữ cảnh...</Text>
+            <ActivityIndicator size="small" color={IOS_COLORS.systemBlue} />
+            <Text style={styles.loadingText}>
+              Đang tra từ điển & ngữ cảnh...
+            </Text>
           </View>
         ) : (
           <View style={styles.content}>
-            <Text style={styles.label}>NGHĨA TIẾNG VIỆT:</Text>
+            <Text style={styles.label}>NGHĨA TIẾNG VIỆT</Text>
             <Text style={styles.translationText}>
               {lookupData?.translation_vi || 'Không tìm thấy bản dịch'}
             </Text>
@@ -120,13 +138,21 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
             {Boolean(lookupData?.definition_vi || lookupData?.definition_en) && (
               <View style={styles.definitionBox}>
                 {Boolean(lookupData?.definition_vi) && (
-                  <Text style={styles.definitionViText}>
-                    💡 {lookupData?.definition_vi}
-                  </Text>
+                  <View style={styles.defRow}>
+                    <Ionicons
+                      name="bulb-outline"
+                      size={16}
+                      color={IOS_COLORS.systemYellow}
+                      style={{ marginTop: 2 }}
+                    />
+                    <Text style={styles.definitionViText}>
+                      {lookupData?.definition_vi}
+                    </Text>
+                  </View>
                 )}
                 {Boolean(lookupData?.definition_en) && (
                   <Text style={styles.definitionEnText}>
-                    ({lookupData?.definition_en})
+                    {lookupData?.definition_en}
                   </Text>
                 )}
               </View>
@@ -134,11 +160,20 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
 
             {Boolean(lookupData?.context_en) && (
               <View style={styles.contextBox}>
-                <Text style={styles.contextLabel}>NGỮ CẢNH TRONG BÀI:</Text>
-                <Text style={styles.contextEnText}>“{lookupData?.context_en}”</Text>
+                <View style={styles.contextHeaderRow}>
+                  <Ionicons
+                    name="chatbox-ellipses-outline"
+                    size={14}
+                    color={IOS_COLORS.systemBlue}
+                  />
+                  <Text style={styles.contextLabel}>NGỮ CẢNH TRONG BÀI</Text>
+                </View>
+                <Text style={styles.contextEnText}>
+                  “{lookupData?.context_en}”
+                </Text>
                 {Boolean(lookupData?.context_vi) && (
                   <Text style={styles.contextViText}>
-                    ➔ {lookupData?.context_vi}
+                    {lookupData?.context_vi}
                   </Text>
                 )}
               </View>
@@ -149,22 +184,46 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
         <View style={styles.actionRow}>
           {Boolean(onSaveWord) && (
             <TouchableOpacity
-              style={[styles.saveWordBtn, isWordSaved && styles.saveWordBtnActive]}
-              onPress={() => lookupData && onSaveWord?.(lookupData)}
+              style={[
+                styles.saveWordBtn,
+                isWordSaved && styles.saveWordBtnActive,
+              ]}
+              activeOpacity={0.8}
+              onPress={() => {
+                if (lookupData) {
+                  triggerSuccessHaptic();
+                  onSaveWord?.(lookupData);
+                }
+              }}
             >
+              <Ionicons
+                name={isWordSaved ? 'bookmark' : 'bookmark-outline'}
+                size={17}
+                color={
+                  isWordSaved ? IOS_COLORS.systemYellow : IOS_COLORS.label
+                }
+              />
               <Text
                 style={[
                   styles.saveWordBtnText,
                   isWordSaved && styles.saveWordBtnTextActive,
                 ]}
               >
-                {isWordSaved ? '⭐ Đã lưu' : '☆ Lưu từ này'}
+                {isWordSaved ? 'Đã lưu sổ tay' : 'Lưu vào sổ tay'}
               </Text>
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={styles.actionBtn} onPress={onClose}>
-            <Text style={styles.actionBtnText}>Tiếp tục nghe ▶</Text>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            activeOpacity={0.85}
+            onPress={() => {
+              triggerLightHaptic();
+              onClose();
+            }}
+          >
+            <Ionicons name="play" size={16} color="#FFFFFF" />
+            <Text style={styles.actionBtnText}>Tiếp tục nghe</Text>
           </TouchableOpacity>
         </View>
       </BottomSheetView>
@@ -174,20 +233,20 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
 
 const styles = StyleSheet.create({
   sheetBackground: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: IOS_COLORS.secondarySystemBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    borderWidth: 1,
-    borderColor: '#333333',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: IOS_COLORS.separator,
   },
   handleIndicator: {
-    backgroundColor: '#666666',
-    width: 44,
+    backgroundColor: IOS_COLORS.tertiaryLabel,
+    width: 38,
     height: 5,
   },
   sheetContainer: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 4,
     paddingBottom: 28,
   },
@@ -200,10 +259,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   wordText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1DB954',
-    letterSpacing: 0.4,
+    ...IOS_TYPOGRAPHY.title1,
+    color: IOS_COLORS.label,
   },
   metaBadgesRow: {
     flexDirection: 'row',
@@ -212,37 +269,33 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   ipaBadge: {
-    backgroundColor: '#2A2A2A',
+    backgroundColor: IOS_COLORS.tertiarySystemBackground,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
   ipaText: {
-    color: '#E0E0E0',
-    fontSize: 14,
+    ...IOS_TYPOGRAPHY.footnote,
+    color: IOS_COLORS.secondaryLabel,
     fontWeight: '600',
   },
   posBadge: {
-    backgroundColor: 'rgba(29, 185, 84, 0.16)',
+    backgroundColor: 'rgba(10, 132, 255, 0.16)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
   posText: {
-    color: '#1DB954',
-    fontSize: 13,
-    fontWeight: '700',
+    ...IOS_TYPOGRAPHY.footnote,
+    color: IOS_COLORS.systemBlue,
+    fontWeight: '600',
   },
   closeBtn: {
-    padding: 6,
-  },
-  closeBtnText: {
-    fontSize: 20,
-    color: '#888888',
+    padding: 2,
   },
   divider: {
-    height: 1,
-    backgroundColor: '#2A2A2A',
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: IOS_COLORS.separator,
     marginVertical: 12,
   },
   loadingWrap: {
@@ -252,101 +305,109 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   loadingText: {
-    color: '#AAAAAA',
-    fontSize: 15,
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.secondaryLabel,
   },
   content: {
-    marginVertical: 4,
+    marginVertical: 2,
   },
   label: {
-    fontSize: 12,
-    color: '#9E9E9E',
+    ...IOS_TYPOGRAPHY.caption2,
+    color: IOS_COLORS.secondaryLabel,
     marginBottom: 4,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    fontWeight: '600',
+    letterSpacing: 0.6,
   },
   translationText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    lineHeight: 30,
+    ...IOS_TYPOGRAPHY.title2,
+    color: IOS_COLORS.systemBlue,
   },
   definitionBox: {
-    marginTop: 8,
+    marginTop: 10,
+  },
+  defRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
   },
   definitionViText: {
-    fontSize: 15,
-    color: '#D8D8D8',
-    lineHeight: 22,
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.label,
+    flex: 1,
   },
   definitionEnText: {
-    fontSize: 13,
-    color: '#888888',
+    ...IOS_TYPOGRAPHY.footnote,
+    color: IOS_COLORS.secondaryLabel,
     fontStyle: 'italic',
-    marginTop: 2,
+    marginTop: 4,
   },
   contextBox: {
     marginTop: 12,
-    backgroundColor: '#252525',
+    backgroundColor: IOS_COLORS.tertiarySystemBackground,
     padding: 12,
     borderRadius: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: '#1DB954',
   },
-  contextLabel: {
-    fontSize: 11,
-    color: '#1DB954',
-    fontWeight: '700',
+  contextHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     marginBottom: 4,
   },
+  contextLabel: {
+    ...IOS_TYPOGRAPHY.caption2,
+    color: IOS_COLORS.systemBlue,
+    fontWeight: '700',
+  },
   contextEnText: {
-    fontSize: 14,
-    color: '#FFFFFF',
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.label,
     fontWeight: '500',
   },
   contextViText: {
-    fontSize: 13,
-    color: '#B0B0B0',
-    fontStyle: 'italic',
+    ...IOS_TYPOGRAPHY.footnote,
+    color: IOS_COLORS.secondaryLabel,
     marginTop: 4,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 16,
+    marginTop: 18,
   },
   saveWordBtn: {
     flex: 1,
-    backgroundColor: '#2A2A2A',
-    borderWidth: 1,
-    borderColor: '#444444',
-    paddingVertical: 14,
-    borderRadius: 30,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
+    backgroundColor: IOS_COLORS.tertiarySystemBackground,
+    paddingVertical: 13,
+    borderRadius: 14,
   },
   saveWordBtnActive: {
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
-    borderColor: '#FFD700',
+    backgroundColor: 'rgba(255, 214, 10, 0.16)',
   },
   saveWordBtnText: {
-    color: '#E0E0E0',
-    fontSize: 14,
-    fontWeight: '700',
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.label,
+    fontWeight: '600',
   },
   saveWordBtnTextActive: {
-    color: '#FFD700',
+    color: IOS_COLORS.systemYellow,
   },
   actionBtn: {
-    flex: 1.2,
-    backgroundColor: '#1DB954',
-    paddingVertical: 14,
-    borderRadius: 30,
+    flex: 1.15,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
+    backgroundColor: IOS_COLORS.systemBlue,
+    paddingVertical: 13,
+    borderRadius: 14,
   },
   actionBtnText: {
-    color: '#000000',
-    fontSize: 15,
-    fontWeight: '800',
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });

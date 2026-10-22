@@ -2,19 +2,21 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import {
   activateKeepAwakeAsync,
   deactivateKeepAwake,
 } from 'expo-keep-awake';
 
 import { AudioControls } from '../components/AudioControls';
+import { IOSBottomTabBar } from '../components/IOSBottomTabBar';
 import { KaraokeLine } from '../components/KaraokeLine';
 import { TranslationSheet } from '../components/TranslationSheet';
 import { useKaraokeSync } from '../hooks/useKaraokeSync';
@@ -64,11 +66,19 @@ import {
   saveWordToVocabulary,
   toggleSentenceBookmark,
 } from '../services/learningService';
+import {
+  ActiveTabKey,
+  IOS_COLORS,
+  IOS_TYPOGRAPHY,
+} from '../theme/iosTheme';
+import {
+  triggerLightHaptic,
+  triggerSelectionHaptic,
+  triggerSuccessHaptic,
+} from '../utils/haptics';
 import { ImportScreen } from './ImportScreen';
 import { LibraryScreen } from './LibraryScreen';
 import { StudyDeckScreen } from './StudyDeckScreen';
-
-type ActiveTab = 'player' | 'library' | 'import' | 'study';
 
 const FALLBACK_DIALOGUE: DialogueData = {
   conversation_id: 'conv_1ce89d5b61',
@@ -162,7 +172,7 @@ const FALLBACK_DIALOGUE: DialogueData = {
 };
 
 export const PlayerScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('player');
+  const [activeTab, setActiveTab] = useState<ActiveTabKey>('player');
   const [dialogue, setDialogue] = useState<DialogueData>(FALLBACK_DIALOGUE);
   const [libraryItems, setLibraryItems] = useState<DialogueSummary[]>([]);
   const [libraryLoading, setLibraryLoading] = useState(false);
@@ -227,7 +237,10 @@ export const PlayerScreen: React.FC = () => {
       dialogue_title: dialogue.title,
     });
     setSavedVocabIds(new Set(updated.map((v) => v.id.toLowerCase().trim())));
-    Alert.alert('Đã lưu vào sổ tay ✓', `Từ "${data.word}" đã được thêm vào mục Ôn tập.`);
+    Alert.alert(
+      'Đã lưu vào sổ tay',
+      `Từ "${data.word}" đã được thêm vào mục Sổ tay.`
+    );
   }
 
   const flatListRef = useRef<FlatList<DialogueSegment>>(null);
@@ -318,10 +331,11 @@ export const PlayerScreen: React.FC = () => {
         return;
       }
     } catch {
-      // Offline mode fallback: check local offline storage
       const offlineList = await getOfflineSummariesList();
       if (offlineList.length > 0) {
-        const localData = await getOfflineDialogue(offlineList[0].conversation_id);
+        const localData = await getOfflineDialogue(
+          offlineList[0].conversation_id
+        );
         if (localData) {
           setDialogue(localData);
           await setupTrack(localData);
@@ -334,7 +348,6 @@ export const PlayerScreen: React.FC = () => {
   }
 
   // Smooth auto-scroll active sentence to 40% from top of screen
-  // When user is scrolling, auto-scroll is PAUSED so the screen never jumps
   useEffect(() => {
     if (
       shouldAutoScroll(
@@ -365,13 +378,13 @@ export const PlayerScreen: React.FC = () => {
     if (scrollResumeTimerRef.current) {
       clearTimeout(scrollResumeTimerRef.current);
     }
-    // Tự động bám sát lại câu đang phát sau 4.5 giây người dùng dừng vuốt
     scrollResumeTimerRef.current = setTimeout(() => {
       setIsUserScrolling(false);
     }, 4500);
   }, []);
 
   const handleResumeAutoScroll = useCallback(() => {
+    triggerSelectionHaptic();
     if (scrollResumeTimerRef.current) {
       clearTimeout(scrollResumeTimerRef.current);
     }
@@ -389,10 +402,9 @@ export const PlayerScreen: React.FC = () => {
     }
   }, [activeSegmentIndex, dialogue.segments.length]);
 
-  // Dynamic Player Shadowing Pause Mode (when user enables shadowingPauseSec > 0 on a standard 0.4s track)
+  // Dynamic Player Shadowing Pause Mode
   useEffect(() => {
     const bakedSilence = dialogue.silence_sec ?? 0.4;
-    // Only dynamically pause in player if user enabled shadowingPauseSec > 0 and track doesn't already have >=1.5s FFmpeg silence
     if (
       shadowingPauseSec <= 0 ||
       bakedSilence >= 1.5 ||
@@ -406,7 +418,6 @@ export const PlayerScreen: React.FC = () => {
     const seg = dialogue.segments[activeSegmentIndex];
     if (!seg) return;
 
-    // Trigger at the end of the current speaker's sentence
     if (
       position >= seg.end - 0.05 &&
       position <= seg.end + 0.3 &&
@@ -434,7 +445,6 @@ export const PlayerScreen: React.FC = () => {
     isDynamicShadowingWait,
   ]);
 
-  // Clear pending shadowing timer on unmount
   useEffect(() => {
     return () => {
       if (shadowingTimeoutRef.current) {
@@ -443,7 +453,6 @@ export const PlayerScreen: React.FC = () => {
     };
   }, []);
 
-  // Transport controls
   async function handlePlayPause() {
     if (shadowingTimeoutRef.current) {
       clearTimeout(shadowingTimeoutRef.current);
@@ -481,7 +490,6 @@ export const PlayerScreen: React.FC = () => {
     [isPlaying]
   );
 
-  // Word Tap-to-Speak: Tapping a word immediately seeks and speaks that exact word!
   const handleWordPress = useCallback(
     async (
       word: string,
@@ -494,7 +502,6 @@ export const PlayerScreen: React.FC = () => {
           ? wordMeta
           : findWordTimestamp(segment, word, wordIndex);
 
-      // Seek audio to exact word start timestamp & speak immediately
       await seekPlayerTo(ts.start);
       await playAudio();
 
@@ -511,7 +518,6 @@ export const PlayerScreen: React.FC = () => {
     []
   );
 
-  // Word Long-Press (350ms) to open full Dictionary Translation & IPA Sheet
   const handleWordLongPress = useCallback(
     async (word: string, segment: DialogueSegment) => {
       wasPlayingBeforeLookupRef.current = isPlaying;
@@ -562,7 +568,6 @@ export const PlayerScreen: React.FC = () => {
     }
   }, []);
 
-  // Refresh merged Library list (Server + Offline storage)
   const refreshLibraryList = useCallback(async () => {
     setLibraryLoading(true);
     try {
@@ -590,7 +595,6 @@ export const PlayerScreen: React.FC = () => {
 
         setLibraryItems(Array.from(mergedMap.values()));
       } catch {
-        // Offline mode: show locally downloaded lessons
         const offlineOnly = await getOfflineSummariesList();
         setLibraryItems(offlineOnly);
       }
@@ -599,9 +603,13 @@ export const PlayerScreen: React.FC = () => {
     }
   }, []);
 
-  async function handleOpenLibraryTab() {
-    setActiveTab('library');
-    await refreshLibraryList();
+  async function handleSelectTab(nextTab: ActiveTabKey) {
+    setActiveTab(nextTab);
+    if (nextTab === 'library') {
+      await refreshLibraryList();
+    } else if (nextTab === 'study') {
+      await refreshLearningStates();
+    }
   }
 
   async function handleSelectLibraryDialogue(convId: string) {
@@ -625,285 +633,276 @@ export const PlayerScreen: React.FC = () => {
   }
 
   async function handleQuickSaveCurrentOffline() {
+    triggerLightHaptic();
     try {
       const updated = await saveDialogueOffline(dialogue);
       setDialogue(updated);
+      triggerSuccessHaptic();
       Alert.alert(
-        'Đã lưu Offline ✓',
+        'Đã lưu Offline',
         `Bài "${dialogue.title}" đã được lưu vào bộ nhớ iPhone để nghe không cần mạng.`
       );
     } catch (e: any) {
-      Alert.alert('Lỗi lưu Offline', e?.message || 'Không thể tải file âm thanh.');
+      Alert.alert(
+        'Lỗi lưu Offline',
+        e?.message || 'Không thể tải file âm thanh.'
+      );
     }
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" />
 
-      {/* Top Navigation & Status Header */}
-      <View style={styles.header}>
-        <View style={styles.categoryRow}>
-          <Text style={styles.headerCategory}>LUYỆN NGHE ĐI XE</Text>
-          {dialogue.is_offline ? (
-            <View style={styles.offlineTag}>
-              <Text style={styles.offlineTagText}>✓ OFFLINE</Text>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.downloadQuickTag}
-              onPress={handleQuickSaveCurrentOffline}
-            >
-              <Text style={styles.downloadQuickTagText}>⬇ Lưu máy</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={[
-              styles.awakeTag,
-              keepScreenAwake && styles.awakeTagActive,
-            ]}
-            onPress={() => setKeepScreenAwake((prev) => !prev)}
-          >
-            <Text
-              style={[
-                styles.awakeTagText,
-                keepScreenAwake && styles.awakeTagTextActive,
-              ]}
-            >
-              {keepScreenAwake ? '🔆 Sáng' : '🌙 Tắt'}
-            </Text>
-          </TouchableOpacity>
-          {shadowingPauseSec > 0 && (
-            <TouchableOpacity
-              style={[styles.awakeTag, styles.awakeTagActive]}
-              onPress={() => setActiveTab('import')}
-            >
-              <Text style={[styles.awakeTagText, styles.awakeTagTextActive]}>
-                🗣 Nhẩm {shadowingPauseSec}s
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {dialogue.title}
-        </Text>
-
-        <View style={styles.headerBtnGroup}>
-          <TouchableOpacity
-            style={[
-              styles.navBtn,
-              activeTab === 'player' && styles.activeNavBtn,
-            ]}
-            onPress={() => setActiveTab('player')}
-          >
-            <Text
-              style={[
-                styles.navBtnText,
-                activeTab === 'player' && styles.activeNavBtnText,
-              ]}
-            >
-              🎧 Bài nghe
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.navBtn,
-              activeTab === 'library' && styles.activeNavBtn,
-            ]}
-            onPress={handleOpenLibraryTab}
-          >
-            <Text
-              style={[
-                styles.navBtnText,
-                activeTab === 'library' && styles.activeNavBtnText,
-              ]}
-            >
-              📚 Thư viện
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.navBtn,
-              activeTab === 'import' && styles.activeNavBtn,
-            ]}
-            onPress={() => setActiveTab('import')}
-          >
-            <Text
-              style={[
-                styles.navBtnText,
-                activeTab === 'import' && styles.activeNavBtnText,
-              ]}
-            >
-              ➕ Tạo mới
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.navBtn,
-              activeTab === 'study' && styles.activeNavBtn,
-            ]}
-            onPress={() => {
-              refreshLearningStates();
-              setActiveTab('study');
-            }}
-          >
-            <Text
-              style={[
-                styles.navBtnText,
-                activeTab === 'study' && styles.activeNavBtnText,
-              ]}
-            >
-              📖 Ôn tập{dueReviewCount > 0 ? ` (${dueReviewCount})` : ''}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Main Content View: Player / Library / Import */}
-      {activeTab === 'library' ? (
-        <LibraryScreen
-          dialogues={libraryItems}
-          activeConversationId={dialogue.conversation_id}
-          loading={libraryLoading}
-          onSelectDialogue={handleSelectLibraryDialogue}
-          onRefresh={refreshLibraryList}
-          onClose={() => setActiveTab('player')}
-        />
-      ) : activeTab === 'import' ? (
-        <ImportScreen
-          shadowingPauseSec={shadowingPauseSec}
-          onShadowingPauseChange={setShadowingPauseSecState}
-          onDialogueCreated={async (newDialogue) => {
-            setDialogue(newDialogue);
-            lastScrolledIndex.current = -1;
-            lastShadowedSegIdRef.current = null;
-            await setupTrack(newDialogue);
-            setActiveTab('player');
-            await playAudio();
-          }}
-          onClose={() => setActiveTab('player')}
-        />
-      ) : activeTab === 'study' ? (
-        <StudyDeckScreen
-          onSelectBookmarkedSentence={async (convId, _segId, startSec) => {
-            try {
-              const cached = await getOfflineDialogue(convId);
-              const fullData = cached || (await fetchDialogue(convId));
-              setDialogue(fullData);
-              await setupTrack(fullData);
-              setActiveTab('player');
-              await seekPlayerTo(startSec);
-              await playAudio();
-            } catch (err: any) {
-              Alert.alert(
-                'Không thể mở câu',
-                err?.message || 'Không tìm thấy bài hội thoại'
-              );
-            }
-          }}
-          onSelectReviewDialogue={async (convId) => {
-            try {
-              const cached = await getOfflineDialogue(convId);
-              const fullData = cached || (await fetchDialogue(convId));
-              setDialogue(fullData);
-              await setupTrack(fullData);
-              setActiveTab('player');
-              await playAudio();
-            } catch (err: any) {
-              Alert.alert(
-                'Không thể mở bài ôn',
-                err?.message || 'Không tìm thấy bài hội thoại'
-              );
-            }
-          }}
-          onClose={() => setActiveTab('player')}
-        />
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={dialogue.segments}
-          keyExtractor={(item) => `segment_${item.id}`}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={true}
-          onScrollBeginDrag={handleScrollBeginDrag}
-          onScrollEndDrag={handleScrollEndDrag}
-          onMomentumScrollEnd={handleScrollEndDrag}
-          onScrollToIndexFailed={(info) => {
-            setTimeout(() => {
-              flatListRef.current?.scrollToIndex({
-                index: info.index,
-                animated: true,
-                viewPosition: 0.4,
-              });
-            }, 100);
-          }}
-          renderItem={({ item, index }) => {
-            const isActiveSeg = index === activeSegmentIndex;
-            const bakedSilence = dialogue.silence_sec ?? 0.4;
-            const isBakedSilenceGap =
-              isActiveSeg &&
-              (shadowingPauseSec > 0 || bakedSilence >= 1.5) &&
-              position > item.end + 0.05;
-            const isShadowingPauseActive =
-              isActiveSeg && (isDynamicShadowingWait || isBakedSilenceGap);
-            const sentenceBookmarkId = makeSentenceBookmarkId(
-              dialogue.conversation_id,
-              item.id
-            );
-
-            return (
-              <KaraokeLine
-                segment={item}
-                currentTime={position}
-                isActive={isActiveSeg}
-                isShadowingPauseActive={isShadowingPauseActive}
-                isBookmarked={bookmarkedIds.has(sentenceBookmarkId)}
-                onToggleBookmark={handleToggleBookmarkSentence}
-                onWordPress={handleWordPress}
-                onWordLongPress={handleWordLongPress}
-                onLinePress={handleJumpToLine}
+      {/* iOS Top Header (Shown on Now Playing Screen) */}
+      {activeTab === 'player' && (
+        <View style={styles.header}>
+          <View style={styles.categoryRow}>
+            <View style={styles.liveIndicator}>
+              <Ionicons
+                name="headset"
+                size={12}
+                color={IOS_COLORS.systemBlue}
               />
-            );
-          }}
-        />
-      )}
+              <Text style={styles.headerCategory}>COMMUTE PLAYER</Text>
+            </View>
 
-      {/* Floating Re-sync Pill when user is manually scrolling during playback */}
-      {isUserScrolling && activeTab === 'player' && isPlaying && (
-        <TouchableOpacity
-          style={styles.floatingResyncBtn}
-          onPress={handleResumeAutoScroll}
-        >
-          <Text style={styles.floatingResyncBtnText}>⬇ Về câu đang phát</Text>
-        </TouchableOpacity>
-      )}
+            <View style={styles.statusPillsRight}>
+              {dialogue.is_offline ? (
+                <View style={styles.offlineTag}>
+                  <Ionicons
+                    name="arrow-down-circle"
+                    size={13}
+                    color={IOS_COLORS.systemGreen}
+                  />
+                  <Text style={styles.offlineTagText}>Đã tải</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.downloadQuickTag}
+                  onPress={handleQuickSaveCurrentOffline}
+                >
+                  <Ionicons
+                    name="cloud-download-outline"
+                    size={13}
+                    color={IOS_COLORS.secondaryLabel}
+                  />
+                  <Text style={styles.downloadQuickTagText}>Lưu máy</Text>
+                </TouchableOpacity>
+              )}
 
-      {/* Floating Toast when a word is tapped to speak */}
-      {Boolean(pronouncingWord) && (
-        <View style={styles.wordPronounceToast}>
-          <Text style={styles.wordPronounceToastText}>
-            🔊 Đang nói từ: "{pronouncingWord}"
+              <TouchableOpacity
+                style={[
+                  styles.awakeTag,
+                  keepScreenAwake && styles.awakeTagActive,
+                ]}
+                onPress={() => {
+                  triggerSelectionHaptic();
+                  setKeepScreenAwake((prev) => !prev);
+                }}
+              >
+                <Ionicons
+                  name={keepScreenAwake ? 'sunny' : 'moon'}
+                  size={12}
+                  color={
+                    keepScreenAwake
+                      ? IOS_COLORS.systemYellow
+                      : IOS_COLORS.secondaryLabel
+                  }
+                />
+                <Text
+                  style={[
+                    styles.awakeTagText,
+                    keepScreenAwake && styles.awakeTagTextActive,
+                  ]}
+                >
+                  {keepScreenAwake ? 'Giữ sáng' : 'Tự tắt'}
+                </Text>
+              </TouchableOpacity>
+
+              {shadowingPauseSec > 0 && (
+                <TouchableOpacity
+                  style={styles.shadowingTag}
+                  onPress={() => handleSelectTab('import')}
+                >
+                  <Ionicons
+                    name="mic"
+                    size={12}
+                    color={IOS_COLORS.systemGreen}
+                  />
+                  <Text style={styles.shadowingTagText}>
+                    {shadowingPauseSec}s
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {dialogue.title}
           </Text>
         </View>
       )}
 
-      {/* Persistent Bottom Audio Controls */}
-      <AudioControls
-        isPlaying={isPlaying}
-        position={position}
-        duration={duration}
-        rate={playbackRate}
-        isLooping={isLooping}
-        onPlayPause={handlePlayPause}
-        onSeekToStartOfSegment={smartRewindToSentenceStart}
-        onSeekForward={smartSkipToNextSentence}
-        onToggleRate={handleToggleRate}
-        onToggleLoop={handleToggleLoop}
-        onSeekToPosition={seekPlayerTo}
+      {/* Main Content View */}
+      <View style={styles.mainContent}>
+        {activeTab === 'library' ? (
+          <LibraryScreen
+            dialogues={libraryItems}
+            activeConversationId={dialogue.conversation_id}
+            loading={libraryLoading}
+            onSelectDialogue={handleSelectLibraryDialogue}
+            onRefresh={refreshLibraryList}
+            onClose={() => setActiveTab('player')}
+          />
+        ) : activeTab === 'import' ? (
+          <ImportScreen
+            shadowingPauseSec={shadowingPauseSec}
+            onShadowingPauseChange={setShadowingPauseSecState}
+            onDialogueCreated={async (newDialogue) => {
+              setDialogue(newDialogue);
+              lastScrolledIndex.current = -1;
+              lastShadowedSegIdRef.current = null;
+              await setupTrack(newDialogue);
+              setActiveTab('player');
+              await playAudio();
+            }}
+            onClose={() => setActiveTab('player')}
+          />
+        ) : activeTab === 'study' ? (
+          <StudyDeckScreen
+            onSelectBookmarkedSentence={async (convId, _segId, startSec) => {
+              try {
+                const cached = await getOfflineDialogue(convId);
+                const fullData = cached || (await fetchDialogue(convId));
+                setDialogue(fullData);
+                await setupTrack(fullData);
+                setActiveTab('player');
+                await seekPlayerTo(startSec);
+                await playAudio();
+              } catch (err: any) {
+                Alert.alert(
+                  'Không thể mở câu',
+                  err?.message || 'Không tìm thấy bài hội thoại'
+                );
+              }
+            }}
+            onSelectReviewDialogue={async (convId) => {
+              try {
+                const cached = await getOfflineDialogue(convId);
+                const fullData = cached || (await fetchDialogue(convId));
+                setDialogue(fullData);
+                await setupTrack(fullData);
+                setActiveTab('player');
+                await playAudio();
+              } catch (err: any) {
+                Alert.alert(
+                  'Không thể mở bài ôn',
+                  err?.message || 'Không tìm thấy bài hội thoại'
+                );
+              }
+            }}
+            onClose={() => setActiveTab('player')}
+          />
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={dialogue.segments}
+            keyExtractor={(item) => `segment_${item.id}`}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={true}
+            onScrollBeginDrag={handleScrollBeginDrag}
+            onScrollEndDrag={handleScrollEndDrag}
+            onMomentumScrollEnd={handleScrollEndDrag}
+            onScrollToIndexFailed={(info) => {
+              setTimeout(() => {
+                flatListRef.current?.scrollToIndex({
+                  index: info.index,
+                  animated: true,
+                  viewPosition: 0.4,
+                });
+              }, 100);
+            }}
+            renderItem={({ item, index }) => {
+              const isActiveSeg = index === activeSegmentIndex;
+              const bakedSilence = dialogue.silence_sec ?? 0.4;
+              const isBakedSilenceGap =
+                isActiveSeg &&
+                (shadowingPauseSec > 0 || bakedSilence >= 1.5) &&
+                position > item.end + 0.05;
+              const isShadowingPauseActive =
+                isActiveSeg && (isDynamicShadowingWait || isBakedSilenceGap);
+              const sentenceBookmarkId = makeSentenceBookmarkId(
+                dialogue.conversation_id,
+                item.id
+              );
+
+              return (
+                <KaraokeLine
+                  segment={item}
+                  currentTime={position}
+                  isActive={isActiveSeg}
+                  isShadowingPauseActive={isShadowingPauseActive}
+                  isBookmarked={bookmarkedIds.has(sentenceBookmarkId)}
+                  onToggleBookmark={handleToggleBookmarkSentence}
+                  onWordPress={handleWordPress}
+                  onWordLongPress={handleWordLongPress}
+                  onLinePress={handleJumpToLine}
+                />
+              );
+            }}
+          />
+        )}
+
+        {/* Floating Re-sync Pill when user is manually scrolling during playback */}
+        {isUserScrolling && activeTab === 'player' && isPlaying && (
+          <TouchableOpacity
+            style={styles.floatingResyncBtn}
+            onPress={handleResumeAutoScroll}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="arrow-down" size={14} color="#FFFFFF" />
+            <Text style={styles.floatingResyncBtnText}>Về câu đang phát</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Floating Toast when a word is tapped to speak */}
+        {Boolean(pronouncingWord) && (
+          <View style={styles.wordPronounceToast}>
+            <Ionicons
+              name="volume-high"
+              size={16}
+              color={IOS_COLORS.systemBlue}
+            />
+            <Text style={styles.wordPronounceToastText}>
+              Đang phát: “{pronouncingWord}”
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Audio Deck (Shown on Player Tab) */}
+      {activeTab === 'player' && (
+        <AudioControls
+          isPlaying={isPlaying}
+          position={position}
+          duration={duration}
+          rate={playbackRate}
+          isLooping={isLooping}
+          onPlayPause={handlePlayPause}
+          onSeekToStartOfSegment={smartRewindToSentenceStart}
+          onSeekForward={smartSkipToNextSentence}
+          onToggleRate={handleToggleRate}
+          onToggleLoop={handleToggleLoop}
+          onSeekToPosition={seekPlayerTo}
+        />
+      )}
+
+      {/* Standard iOS Bottom Tab Bar */}
+      <IOSBottomTabBar
+        activeTab={activeTab}
+        dueReviewCount={dueReviewCount}
+        onSelectTab={handleSelectTab}
       />
 
       {/* Native iOS Swipeable Bottom Sheet for Word Translation + IPA */}
@@ -925,161 +924,158 @@ export const PlayerScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#090D14',
+    backgroundColor: IOS_COLORS.systemBackground,
   },
   header: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
-    backgroundColor: 'rgba(9, 13, 20, 0.95)',
-    gap: 10,
+    paddingTop: 6,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: IOS_COLORS.separator,
+    backgroundColor: IOS_COLORS.systemBackground,
+    gap: 6,
   },
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
   },
-  headerCategory: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#1DB954',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  offlineTag: {
-    backgroundColor: 'rgba(29, 185, 84, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 0.5,
-    borderColor: 'rgba(29, 185, 84, 0.4)',
-  },
-  offlineTagText: {
-    color: '#1DB954',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  downloadQuickTag: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  downloadQuickTagText: {
-    color: '#CBD5E1',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  awakeTag: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  awakeTagActive: {
-    backgroundColor: 'rgba(29, 185, 84, 0.18)',
-    borderColor: 'rgba(29, 185, 84, 0.5)',
-  },
-  awakeTagText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  awakeTagTextActive: {
-    color: '#1DB954',
-  },
-  headerTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#F8FAFC',
-    letterSpacing: -0.4,
-  },
-  headerBtnGroup: {
+  liveIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 14,
-    padding: 3,
-    gap: 2,
-    marginTop: 2,
+    gap: 5,
   },
-  navBtn: {
-    flex: 1,
-    paddingVertical: 7,
+  headerCategory: {
+    ...IOS_TYPOGRAPHY.caption2,
+    fontWeight: '700',
+    color: IOS_COLORS.systemBlue,
+    letterSpacing: 0.8,
+  },
+  statusPillsRight: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: 11,
+    gap: 6,
   },
-  activeNavBtn: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
+  offlineTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(48, 209, 88, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  navBtnText: {
-    color: 'rgba(255, 255, 255, 0.65)',
-    fontSize: 11,
+  offlineTagText: {
+    ...IOS_TYPOGRAPHY.caption2,
+    color: IOS_COLORS.systemGreen,
+    fontWeight: '600',
+  },
+  downloadQuickTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: IOS_COLORS.secondarySystemGroupedBackground,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  downloadQuickTagText: {
+    ...IOS_TYPOGRAPHY.caption2,
+    color: IOS_COLORS.secondaryLabel,
+    fontWeight: '600',
+  },
+  awakeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: IOS_COLORS.secondarySystemGroupedBackground,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  awakeTagActive: {
+    backgroundColor: 'rgba(255, 214, 10, 0.14)',
+  },
+  awakeTagText: {
+    ...IOS_TYPOGRAPHY.caption2,
+    color: IOS_COLORS.secondaryLabel,
+    fontWeight: '600',
+  },
+  awakeTagTextActive: {
+    color: IOS_COLORS.systemYellow,
+  },
+  shadowingTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(48, 209, 88, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  shadowingTagText: {
+    ...IOS_TYPOGRAPHY.caption2,
+    color: IOS_COLORS.systemGreen,
     fontWeight: '700',
   },
-  activeNavBtnText: {
-    color: '#000000',
-    fontWeight: '800',
+  headerTitle: {
+    ...IOS_TYPOGRAPHY.title3,
+    color: IOS_COLORS.label,
+    fontWeight: '700',
+  },
+  mainContent: {
+    flex: 1,
+    position: 'relative',
   },
   listContent: {
-    paddingVertical: 14,
-    paddingBottom: 28,
+    paddingVertical: 10,
+    paddingBottom: 24,
   },
   floatingResyncBtn: {
     position: 'absolute',
-    bottom: 124,
+    bottom: 14,
     alignSelf: 'center',
-    backgroundColor: '#1DB954',
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: IOS_COLORS.systemBlue,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 18,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 6,
     zIndex: 100,
   },
   floatingResyncBtnText: {
-    color: '#000000',
-    fontWeight: '800',
-    fontSize: 13,
+    ...IOS_TYPOGRAPHY.caption1,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   wordPronounceToast: {
     position: 'absolute',
-    bottom: 128,
+    bottom: 16,
     alignSelf: 'center',
-    backgroundColor: 'rgba(24, 24, 24, 0.95)',
-    borderWidth: 1.5,
-    borderColor: '#1DB954',
-    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: IOS_COLORS.secondarySystemBackground,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: IOS_COLORS.systemBlue,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: '#1DB954',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
     shadowRadius: 8,
     zIndex: 100,
   },
   wordPronounceToastText: {
-    color: '#1DB954',
-    fontWeight: '800',
-    fontSize: 14,
+    ...IOS_TYPOGRAPHY.footnote,
+    color: IOS_COLORS.label,
+    fontWeight: '600',
   },
 });

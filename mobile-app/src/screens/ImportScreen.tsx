@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   createDialogue,
   getApiBaseUrl,
@@ -18,6 +19,12 @@ import {
 } from '../services/apiService';
 import { saveDialogueOffline } from '../services/storageService';
 import { DialogueData } from '../types';
+import { IOS_COLORS, IOS_TYPOGRAPHY } from '../theme/iosTheme';
+import {
+  triggerLightHaptic,
+  triggerSelectionHaptic,
+  triggerSuccessHaptic,
+} from '../utils/haptics';
 
 interface ImportScreenProps {
   shadowingPauseSec: number;
@@ -28,19 +35,22 @@ interface ImportScreenProps {
 
 const PRESET_TEMPLATES = [
   {
-    label: '🚗 Đi làm buổi sáng',
+    label: 'Đi làm sáng',
+    icon: 'car-sport-outline' as const,
     title: 'Morning Commute & Rush Hour',
     script:
       "Alex: Hey Sarah, are you caught in the morning rush hour too?\nSarah: Yes, absolutely! The highway traffic is moving at a snail's pace.\nAlex: Are you taking the subway tomorrow instead?\nSarah: Definitely! It only takes twenty minutes downtown.",
   },
   {
-    label: '☕ Quán Cà phê',
+    label: 'Quán Cà phê',
+    icon: 'cafe-outline' as const,
     title: 'Ordering Coffee Before Work',
     script:
       "Sarah: Good morning! Could I get a medium iced latte with oat milk, please?\nAlex: Sure thing! Would you like any breakfast pastry to go with that?\nSarah: An almond croissant sounds wonderful, thank you!\nAlex: Coming right up! Your total is eight dollars and fifty cents.",
   },
   {
-    label: '✈️ Sân bay Quốc tế',
+    label: 'Sân bay',
+    icon: 'airplane-outline' as const,
     title: 'Airport Check-in & Boarding Gate',
     script:
       "David: Excuse me, is boarding for flight BA204 to London still on schedule?\nEmily: We have a slight fifteen-minute delay due to incoming aircraft traffic.\nDavid: No problem at all. Could you confirm which gate we are departing from?\nEmily: Gate B12, right past the duty-free lounge on your left.",
@@ -48,16 +58,15 @@ const PRESET_TEMPLATES = [
 ];
 
 const SHADOWING_OPTIONS = [
-  { label: 'Tắt (Chuẩn 0.4s)', value: 0 },
-  { label: '🗣 Nghỉ 2.0 giây', value: 2.0 },
-  { label: '🗣 Nghỉ 3.0 giây', value: 3.0 },
+  { label: 'Tắt (0.4s)', value: 0 },
+  { label: 'Nghỉ 2.0s', value: 2.0 },
+  { label: 'Nghỉ 3.0s', value: 3.0 },
 ];
 
 export const ImportScreen: React.FC<ImportScreenProps> = ({
   shadowingPauseSec,
   onShadowingPauseChange,
   onDialogueCreated,
-  onClose,
 }) => {
   const [ipInput, setIpInput] = useState(getApiBaseUrl());
   const [selectedPauseSec, setSelectedPauseSec] = useState<number>(
@@ -69,18 +78,23 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
   const [checkingPing, setCheckingPing] = useState(false);
 
   async function handleSaveIpOnly() {
+    triggerLightHaptic();
     const saved = await setApiBaseUrl(ipInput);
     setIpInput(saved);
     setCheckingPing(true);
     try {
       const res = await fetch(`${saved}/api/health`);
       if (res.ok) {
+        triggerSuccessHaptic();
         Alert.alert(
-          'Kết nối thành công ✓',
+          'Kết nối thành công',
           `Đã lưu và kết nối tốt tới máy chủ Backend tại:\n${saved}`
         );
       } else {
-        Alert.alert('Đã lưu IP', `Đã lưu ${saved}, nhưng máy chủ trả về mã ${res.status}.`);
+        Alert.alert(
+          'Đã lưu IP',
+          `Đã lưu ${saved}, nhưng máy chủ trả về mã ${res.status}.`
+        );
       }
     } catch {
       Alert.alert(
@@ -94,10 +108,14 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
 
   async function handleCreateNewDialogue() {
     if (!scriptInput.trim()) {
-      Alert.alert('Thiếu kịch bản', 'Vui lòng nhập kịch bản hội thoại tiếng Anh.');
+      Alert.alert(
+        'Thiếu kịch bản',
+        'Vui lòng nhập kịch bản hội thoại tiếng Anh.'
+      );
       return;
     }
 
+    triggerLightHaptic();
     setLoading(true);
     try {
       const updatedBase = await setApiBaseUrl(ipInput);
@@ -109,7 +127,6 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
         selectedPauseSec > 0 ? selectedPauseSec : 0.4
       );
 
-      // Automatically cache newly created lesson offline onto iPhone storage
       let finalData = created;
       try {
         finalData = await saveDialogueOffline(created);
@@ -117,6 +134,7 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
         // Ignore offline cache failure if running on web
       }
 
+      triggerSuccessHaptic();
       onDialogueCreated(finalData);
     } catch (e: any) {
       Alert.alert(
@@ -135,63 +153,129 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.title}>Tạo Bài Nghe & Cài Đặt</Text>
-          <Text style={styles.subtitle}>
-            Tự động phân vai giọng đọc AI, dịch song ngữ & tải Offline
-          </Text>
+        <Text style={styles.title}>Tạo bài & Cài đặt</Text>
+        <Text style={styles.subtitle}>
+          Tổng hợp giọng đọc AI đa nhân vật & lưu Offline vào iPhone
+        </Text>
+      </View>
+
+      {/* iOS Inset Grouped Section 1: Script Composer */}
+      <Text style={styles.sectionHeader}>SOẠN KỊCH BẢN HỘI THOẠI</Text>
+      <View style={styles.insetGroupCard}>
+        <Text style={styles.fieldLabel}>Mẫu kịch bản nhanh</Text>
+        <View style={styles.presetsRow}>
+          {PRESET_TEMPLATES.map((tpl) => {
+            const isMatching = titleInput === tpl.title;
+            return (
+              <TouchableOpacity
+                key={tpl.label}
+                style={[
+                  styles.presetChip,
+                  isMatching && styles.presetChipActive,
+                ]}
+                onPress={() => {
+                  triggerSelectionHaptic();
+                  setTitleInput(tpl.title);
+                  setScriptInput(tpl.script);
+                }}
+              >
+                <Ionicons
+                  name={tpl.icon}
+                  size={14}
+                  color={
+                    isMatching
+                      ? IOS_COLORS.systemBlue
+                      : IOS_COLORS.secondaryLabel
+                  }
+                />
+                <Text
+                  style={[
+                    styles.presetChipText,
+                    isMatching && styles.presetChipTextActive,
+                  ]}
+                >
+                  {tpl.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
-        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-          <Text style={styles.closeBtnText}>Đóng ✕</Text>
+
+        <View style={styles.hairlineDivider} />
+
+        <Text style={styles.fieldLabel}>Tiêu đề bài học</Text>
+        <TextInput
+          style={styles.input}
+          value={titleInput}
+          onChangeText={setTitleInput}
+          placeholder="Ví dụ: Daily Commute & Traffic"
+          placeholderTextColor={IOS_COLORS.tertiaryLabel}
+        />
+
+        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
+          Nội dung hội thoại (Tên nhân vật: Câu thoại)
+        </Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          value={scriptInput}
+          onChangeText={setScriptInput}
+          multiline
+          placeholder={'Alex: Hello Sarah!\nSarah: Hi Alex, how are you?'}
+          placeholderTextColor={IOS_COLORS.tertiaryLabel}
+        />
+
+        <TouchableOpacity
+          style={[styles.createBtn, loading && styles.disabledBtn]}
+          onPress={handleCreateNewDialogue}
+          disabled={loading}
+          activeOpacity={0.85}
+        >
+          {loading ? (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color="#FFFFFF" />
+              <Text style={styles.createBtnText}>
+                Đang tạo giọng AI & dịch song ngữ...
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.loadingRow}>
+              <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+              <Text style={styles.createBtnText}>
+                Tạo bài nghe & Tải về iPhone
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* Section 1: Server LAN IP Configuration */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionLabel}>1. KẾT NỐI MÁY CHỦ MAC (WI-FI LAN)</Text>
-        <View style={styles.ipRow}>
-          <TextInput
-            style={[styles.input, styles.ipInput]}
-            value={ipInput}
-            onChangeText={setIpInput}
-            placeholder="http://192.168.1.220:8000"
-            placeholderTextColor="#666"
-            autoCapitalize="none"
-            autoCorrect={false}
+      {/* iOS Inset Grouped Section 2: Shadowing Mode */}
+      <Text style={styles.sectionHeader}>CHẾ ĐỘ TỰ NHẨM (SHADOWING)</Text>
+      <View style={styles.insetGroupCard}>
+        <View style={styles.settingTitleRow}>
+          <Ionicons
+            name="mic-outline"
+            size={18}
+            color={IOS_COLORS.systemGreen}
           />
-          <TouchableOpacity
-            style={styles.saveIpBtn}
-            onPress={handleSaveIpOnly}
-            disabled={checkingPing}
-          >
-            {checkingPing ? (
-              <ActivityIndicator size="small" color="#1DB954" />
-            ) : (
-              <Text style={styles.saveIpBtnText}>Lưu & Kiểm tra</Text>
-            )}
-          </TouchableOpacity>
+          <Text style={styles.settingTitle}>
+            Khoảng nghỉ lặp lại sau mỗi câu
+          </Text>
         </View>
-      </View>
-
-      {/* Section 1.5: Shadowing Pause Mode Setting */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionLabel}>
-          2. CHẾ ĐỘ TỰ NHẨM (SHADOWING PAUSE MODE)
-        </Text>
         <Text style={styles.settingDesc}>
-          Tự động chèn khoảng lặng 2–3 giây sau mỗi câu thoại để bạn nhẩm nhắc lại thành tiếng khi đội mũ bảo hiểm / lái xe trước khi nhân vật tiếp theo đối đáp. (Mặc định: Tắt)
+          Tự động chèn khoảng lặng sau mỗi câu thoại để bạn nhẩm nhắc lại thành tiếng khi đang đi đường.
         </Text>
-        <View style={styles.presetsRow}>
+        <View style={styles.segmentedControl}>
           {SHADOWING_OPTIONS.map((opt) => {
             const isSelected = selectedPauseSec === opt.value;
             return (
               <TouchableOpacity
                 key={opt.label}
                 style={[
-                  styles.presetChip,
-                  isSelected && styles.presetChipActive,
+                  styles.segmentItem,
+                  isSelected && styles.segmentItemActive,
                 ]}
                 onPress={async () => {
+                  triggerSelectionHaptic();
                   setSelectedPauseSec(opt.value);
                   await setShadowingPauseSec(opt.value);
                   onShadowingPauseChange(opt.value);
@@ -199,8 +283,8 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
               >
                 <Text
                   style={[
-                    styles.presetChipText,
-                    isSelected && styles.presetChipTextActive,
+                    styles.segmentText,
+                    isSelected && styles.segmentTextActive,
                   ]}
                 >
                   {opt.label}
@@ -211,63 +295,38 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
         </View>
       </View>
 
-      {/* Section 2: Quick Templates */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionLabel}>3. CHỌN NHANH KỊCH BẢN MẪU</Text>
-        <View style={styles.presetsRow}>
-          {PRESET_TEMPLATES.map((tpl) => (
-            <TouchableOpacity
-              key={tpl.label}
-              style={styles.presetChip}
-              onPress={() => {
-                setTitleInput(tpl.title);
-                setScriptInput(tpl.script);
-              }}
-            >
-              <Text style={styles.presetChipText}>{tpl.label}</Text>
-            </TouchableOpacity>
-          ))}
+      {/* iOS Inset Grouped Section 3: Server LAN IP Configuration */}
+      <Text style={styles.sectionHeader}>KẾT NỐI MÁY CHỦ (WI-FI LAN)</Text>
+      <View style={styles.insetGroupCard}>
+        <View style={styles.ipRow}>
+          <TextInput
+            style={[styles.input, styles.ipInput]}
+            value={ipInput}
+            onChangeText={setIpInput}
+            placeholder="http://192.168.1.220:8000"
+            placeholderTextColor={IOS_COLORS.tertiaryLabel}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={styles.saveIpBtn}
+            onPress={handleSaveIpOnly}
+            disabled={checkingPing}
+          >
+            {checkingPing ? (
+              <ActivityIndicator size="small" color={IOS_COLORS.systemBlue} />
+            ) : (
+              <>
+                <Ionicons
+                  name="wifi"
+                  size={15}
+                  color={IOS_COLORS.systemBlue}
+                />
+                <Text style={styles.saveIpBtnText}>Kiểm tra</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
-
-        <Text style={styles.fieldLabel}>Tiêu đề bài hội thoại:</Text>
-        <TextInput
-          style={styles.input}
-          value={titleInput}
-          onChangeText={setTitleInput}
-          placeholder="Ví dụ: Daily Commute & Traffic"
-          placeholderTextColor="#666"
-        />
-
-        <Text style={styles.fieldLabel}>
-          Kịch bản hội thoại (Định dạng: Tên nhân vật: Câu thoại):
-        </Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={scriptInput}
-          onChangeText={setScriptInput}
-          multiline
-          placeholder={'Alex: Hello Sarah!\nSarah: Hi Alex, how are you?'}
-          placeholderTextColor="#666"
-        />
-
-        <TouchableOpacity
-          style={[styles.createBtn, loading && styles.disabledBtn]}
-          onPress={handleCreateNewDialogue}
-          disabled={loading}
-        >
-          {loading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color="#000" />
-              <Text style={styles.createBtnText}>
-                Đang tạo giọng đọc AI & Dịch tiếng Việt...
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.createBtnText}>
-              🎙 Tạo Bài Nghe & Tải Offline Ngay
-            </Text>
-          )}
-        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -276,54 +335,151 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: IOS_COLORS.systemBackground,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 36,
   },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#242424',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: IOS_COLORS.separator,
   },
   title: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
+    ...IOS_TYPOGRAPHY.title2,
+    color: IOS_COLORS.label,
   },
   subtitle: {
-    color: '#888888',
-    fontSize: 12,
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
     marginTop: 2,
   },
-  closeBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+  sectionHeader: {
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginTop: 18,
+    marginBottom: 6,
+    marginHorizontal: 20,
   },
-  closeBtnText: {
-    color: '#1DB954',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  sectionCard: {
-    backgroundColor: '#1A1A1A',
+  insetGroupCard: {
+    backgroundColor: IOS_COLORS.secondarySystemGroupedBackground,
     marginHorizontal: 16,
-    marginTop: 16,
     padding: 16,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: IOS_COLORS.separator,
   },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#1DB954',
-    letterSpacing: 0.8,
-    marginBottom: 10,
+  hairlineDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: IOS_COLORS.separator,
+    marginVertical: 12,
+  },
+  presetsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  presetChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: IOS_COLORS.tertiarySystemGroupedBackground,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  presetChipActive: {
+    backgroundColor: 'rgba(10, 132, 255, 0.18)',
+  },
+  presetChipText: {
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
+    fontWeight: '600',
+  },
+  presetChipTextActive: {
+    color: IOS_COLORS.systemBlue,
+    fontWeight: '700',
+  },
+  settingTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  settingTitle: {
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.label,
+    fontWeight: '600',
+  },
+  settingDesc: {
+    ...IOS_TYPOGRAPHY.footnote,
+    color: IOS_COLORS.secondaryLabel,
+    marginBottom: 12,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: IOS_COLORS.tertiarySystemGroupedBackground,
+    borderRadius: 10,
+    padding: 3,
+  },
+  segmentItem: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  segmentItemActive: {
+    backgroundColor: IOS_COLORS.systemBlue,
+  },
+  segmentText: {
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
+    fontWeight: '600',
+  },
+  segmentTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  fieldLabel: {
+    ...IOS_TYPOGRAPHY.footnote,
+    color: IOS_COLORS.secondaryLabel,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: IOS_COLORS.tertiarySystemGroupedBackground,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    color: IOS_COLORS.label,
+    ...IOS_TYPOGRAPHY.subheadline,
+  },
+  textArea: {
+    height: 140,
+    textAlignVertical: 'top',
+  },
+  createBtn: {
+    backgroundColor: IOS_COLORS.systemBlue,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  disabledBtn: {
+    opacity: 0.6,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  createBtnText: {
+    ...IOS_TYPOGRAPHY.headline,
+    color: '#FFFFFF',
   },
   ipRow: {
     flexDirection: 'row',
@@ -334,92 +490,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   saveIpBtn: {
-    backgroundColor: '#262626',
-    borderWidth: 1,
-    borderColor: '#1DB954',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 10,
-    minWidth: 115,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(10, 132, 255, 0.16)',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
+    minWidth: 104,
   },
   saveIpBtnText: {
-    color: '#1DB954',
-    fontSize: 13,
+    ...IOS_TYPOGRAPHY.footnote,
+    color: IOS_COLORS.systemBlue,
     fontWeight: '700',
-  },
-  presetsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 14,
-  },
-  presetChip: {
-    backgroundColor: '#262626',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#363636',
-  },
-  presetChipActive: {
-    backgroundColor: 'rgba(29, 185, 84, 0.2)',
-    borderColor: '#1DB954',
-  },
-  presetChipText: {
-    color: '#E0E0E0',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  presetChipTextActive: {
-    color: '#1DB954',
-    fontWeight: '800',
-  },
-  settingDesc: {
-    color: '#9E9E9E',
-    fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 10,
-  },
-  fieldLabel: {
-    color: '#BBBBBB',
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 6,
-    marginTop: 10,
-  },
-  input: {
-    backgroundColor: '#242424',
-    borderRadius: 10,
-    padding: 12,
-    color: '#FFFFFF',
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  textArea: {
-    height: 150,
-    textAlignVertical: 'top',
-    lineHeight: 22,
-  },
-  createBtn: {
-    backgroundColor: '#1DB954',
-    paddingVertical: 15,
-    borderRadius: 26,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  disabledBtn: {
-    opacity: 0.65,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  createBtnText: {
-    color: '#000000',
-    fontSize: 15,
-    fontWeight: '800',
   },
 });

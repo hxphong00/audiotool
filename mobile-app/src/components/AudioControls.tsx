@@ -7,6 +7,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  formatPlaybackSpeedLabel,
+  IOS_COLORS,
+  IOS_TYPOGRAPHY,
+} from '../theme/iosTheme';
+import { triggerLightHaptic, triggerSelectionHaptic } from '../utils/haptics';
 
 interface AudioControlsProps {
   isPlaying: boolean;
@@ -51,13 +59,18 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
 
   function handleBarPress(locationX: number) {
     if (!onSeekToPosition || barWidth <= 0 || duration <= 0) return;
+    triggerSelectionHaptic();
     const ratio = Math.min(1, Math.max(0, locationX / barWidth));
     onSeekToPosition(ratio * duration);
   }
 
   return (
-    <View style={styles.container}>
-      {/* Interactive Progress Bar */}
+    <BlurView
+      intensity={75}
+      tint="systemThickMaterialDark"
+      style={styles.container}
+    >
+      {/* Interactive Scrubber Bar (Apple Music / Podcasts style) */}
       <Pressable
         style={styles.progressContainer}
         onLayout={handleBarLayout}
@@ -73,93 +86,137 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
         </View>
         <View style={styles.timeRow}>
           <Text style={styles.timeText}>{formatTimeMMSS(position)}</Text>
-          <Text style={styles.timeHintText}>Chạm câu hoặc thanh để tua</Text>
-          <Text style={styles.timeText}>{formatTimeMMSS(duration)}</Text>
+          <Text style={styles.timeHintText}>
+            Chạm từ để phát • Giữ từ để dịch
+          </Text>
+          <Text style={styles.timeText}>
+            -{formatTimeMMSS(Math.max(0, duration - position))}
+          </Text>
         </View>
       </Pressable>
 
       {/* Main Transport Row */}
       <View style={styles.controlsRow}>
         {/* Speed toggle */}
-        <TouchableOpacity style={styles.rateBtn} onPress={onToggleRate}>
-          <Text style={styles.rateBtnText}>{rate}x</Text>
+        <TouchableOpacity
+          style={styles.pillBtn}
+          activeOpacity={0.7}
+          onPress={() => {
+            triggerSelectionHaptic();
+            onToggleRate();
+          }}
+        >
+          <Text style={styles.rateBtnText}>
+            {formatPlaybackSpeedLabel(rate)}
+          </Text>
         </TouchableOpacity>
 
         {/* Smart Rewind: 1 tap = start of current sentence, 2 taps = previous sentence */}
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={onSeekToStartOfSegment}
+          onPress={() => {
+            triggerLightHaptic();
+            onSeekToStartOfSegment();
+          }}
           activeOpacity={0.7}
         >
-          <Text style={styles.iconText}>⏮</Text>
-          <Text style={styles.iconSubText}>Đầu câu</Text>
+          <Ionicons
+            name="play-skip-back"
+            size={22}
+            color={IOS_COLORS.label}
+          />
         </TouchableOpacity>
 
         {/* Main Play / Pause */}
         <TouchableOpacity
           style={styles.playPauseBtn}
-          onPress={onPlayPause}
-          activeOpacity={0.8}
+          onPress={() => {
+            triggerLightHaptic();
+            onPlayPause();
+          }}
+          activeOpacity={0.85}
         >
-          <Text style={styles.playPauseText}>{isPlaying ? '⏸' : '▶'}</Text>
+          <Ionicons
+            name={isPlaying ? 'pause' : 'play'}
+            size={28}
+            color="#FFFFFF"
+            style={!isPlaying ? { marginLeft: 3 } : undefined}
+          />
         </TouchableOpacity>
 
         {/* Next sentence */}
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={onSeekForward}
+          onPress={() => {
+            triggerLightHaptic();
+            onSeekForward();
+          }}
           activeOpacity={0.7}
         >
-          <Text style={styles.iconText}>⏭</Text>
-          <Text style={styles.iconSubText}>Câu tiếp</Text>
+          <Ionicons
+            name="play-skip-forward"
+            size={22}
+            color={IOS_COLORS.label}
+          />
         </TouchableOpacity>
 
         {/* Auto-Loop / Replay Toggle */}
         <TouchableOpacity
-          style={[styles.loopBtn, isLooping && styles.loopBtnActive]}
-          onPress={onToggleLoop}
+          style={[styles.pillBtn, isLooping && styles.loopBtnActive]}
+          onPress={() => {
+            triggerSelectionHaptic();
+            onToggleLoop();
+          }}
           activeOpacity={0.7}
         >
-          <Text style={[styles.loopBtnText, isLooping && styles.loopBtnTextActive]}>
-            🔁 {isLooping ? 'Lặp' : '1 lần'}
+          <Ionicons
+            name="repeat"
+            size={15}
+            color={
+              isLooping ? IOS_COLORS.systemBlue : IOS_COLORS.secondaryLabel
+            }
+          />
+          <Text
+            style={[
+              styles.loopBtnText,
+              isLooping && styles.loopBtnTextActive,
+            ]}
+          >
+            {isLooping ? 'Lặp' : '1×'}
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </BlurView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 14,
+    marginHorizontal: 12,
     marginBottom: 8,
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 14,
-    borderRadius: 24,
-    backgroundColor: 'rgba(22, 27, 36, 0.95)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    elevation: 8,
+    paddingTop: 10,
+    paddingBottom: 12,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: IOS_COLORS.elevatedCardBackground,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: IOS_COLORS.separator,
   },
   progressContainer: {
-    marginBottom: 10,
+    marginBottom: 8,
     paddingVertical: 4,
   },
   trackBackground: {
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    borderRadius: 2,
+    height: 5,
+    backgroundColor: IOS_COLORS.systemFill,
+    borderRadius: 2.5,
     overflow: 'hidden',
   },
   trackFill: {
     height: '100%',
-    backgroundColor: '#1DB954',
-    borderRadius: 2,
+    backgroundColor: IOS_COLORS.label,
+    borderRadius: 2.5,
   },
   timeRow: {
     flexDirection: 'row',
@@ -168,94 +225,68 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   timeText: {
-    color: 'rgba(255, 255, 255, 0.45)',
-    fontSize: 11,
+    ...IOS_TYPOGRAPHY.caption2,
+    color: IOS_COLORS.secondaryLabel,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
   timeHintText: {
-    color: 'rgba(255, 255, 255, 0.25)',
-    fontSize: 10,
-    fontWeight: '500',
+    ...IOS_TYPOGRAPHY.caption2,
+    color: IOS_COLORS.tertiaryLabel,
   },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
   },
-  rateBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+  pillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: IOS_COLORS.tertiarySystemFill,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    minWidth: 48,
-    alignItems: 'center',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    minWidth: 58,
   },
   rateBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.label,
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
-  loopBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    minWidth: 64,
-    alignItems: 'center',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
   loopBtnActive: {
-    backgroundColor: 'rgba(29, 185, 84, 0.2)',
-    borderColor: 'rgba(29, 185, 84, 0.5)',
+    backgroundColor: 'rgba(10, 132, 255, 0.2)',
   },
   loopBtnText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 11,
-    fontWeight: '700',
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.secondaryLabel,
+    fontWeight: '600',
   },
   loopBtnTextActive: {
-    color: '#1DB954',
-  },
-  iconBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconText: {
-    fontSize: 18,
-    color: '#FFFFFF',
+    color: IOS_COLORS.systemBlue,
     fontWeight: '700',
   },
-  iconSubText: {
-    display: 'none',
-  },
-  playPauseBtn: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: '#1DB954',
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: IOS_COLORS.tertiarySystemFill,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1DB954',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.55,
-    shadowRadius: 16,
-    elevation: 6,
   },
-  playPauseText: {
-    fontSize: 24,
-    color: '#000000',
-    fontWeight: '900',
+  playPauseBtn: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: IOS_COLORS.systemBlue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: IOS_COLORS.systemBlue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 5,
   },
 });

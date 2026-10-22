@@ -1,6 +1,13 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { DialogueSegment } from '../types';
+import {
+  getSpeakerBadgeTheme,
+  IOS_COLORS,
+  IOS_TYPOGRAPHY,
+} from '../theme/iosTheme';
+import { triggerLightHaptic, triggerSelectionHaptic } from '../utils/haptics';
 import { WordPressable } from './WordPressable';
 
 interface KaraokeLineProps {
@@ -36,17 +43,62 @@ const KaraokeLineComponent: React.FC<KaraokeLineProps> = ({
   onLinePress,
   onToggleBookmark,
 }) => {
+  const speakerLabel = segment.speaker_name || segment.speaker;
+  const speakerTheme = getSpeakerBadgeTheme(speakerLabel);
+
   return (
     <Pressable
-      onPress={() => onLinePress(segment)}
+      onPress={() => {
+        triggerSelectionHaptic();
+        onLinePress(segment);
+      }}
       style={[styles.container, isActive && styles.activeContainer]}
     >
       <View style={styles.speakerRow}>
-        <View style={[styles.speakerBadge, isActive && styles.activeSpeakerBadge]}>
-          <Text style={[styles.speakerText, isActive && styles.activeSpeakerText]}>
-            {segment.speaker_name || segment.speaker}
-          </Text>
+        {/* iOS Avatar Circle + Speaker Name Pill */}
+        <View style={styles.speakerLeftRow}>
+          <View
+            style={[
+              styles.avatarCircle,
+              {
+                backgroundColor: isActive
+                  ? speakerTheme.tintColor
+                  : speakerTheme.backgroundColor,
+                borderColor: speakerTheme.borderColor,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.avatarInitial,
+                { color: isActive ? '#FFFFFF' : speakerTheme.tintColor },
+              ]}
+            >
+              {speakerTheme.initial}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.speakerBadge,
+              isActive && {
+                backgroundColor: speakerTheme.backgroundColor,
+                borderColor: speakerTheme.borderColor,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.speakerText,
+                isActive && { color: speakerTheme.tintColor },
+              ]}
+            >
+              {speakerLabel}
+            </Text>
+          </View>
         </View>
+
+        {/* Timestamp & Bookmark Icon */}
         <View style={styles.speakerRightRow}>
           <Text style={styles.timestampText}>
             {segment.start.toFixed(1)}s
@@ -56,13 +108,20 @@ const KaraokeLineComponent: React.FC<KaraokeLineProps> = ({
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               onPress={(e) => {
                 e.stopPropagation?.();
+                triggerLightHaptic();
                 onToggleBookmark?.(segment);
               }}
-              style={styles.starBtn}
+              style={styles.bookmarkBtn}
             >
-              <Text style={[styles.starIcon, isBookmarked && styles.starIconActive]}>
-                {isBookmarked ? '⭐' : '☆'}
-              </Text>
+              <Ionicons
+                name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                size={18}
+                color={
+                  isBookmarked
+                    ? IOS_COLORS.systemYellow
+                    : IOS_COLORS.tertiaryLabel
+                }
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -110,8 +169,13 @@ const KaraokeLineComponent: React.FC<KaraokeLineProps> = ({
       {/* Shadowing Practice Prompt when in pause window */}
       {isActive && isShadowingPauseActive && (
         <View style={styles.shadowingBanner}>
+          <Ionicons
+            name="mic"
+            size={15}
+            color={IOS_COLORS.systemGreen}
+          />
           <Text style={styles.shadowingBannerText}>
-            🗣 TỰ NHẨM (SHADOWING): Hãy đọc to lại câu trên!
+            TỰ NHẨM (SHADOWING): Hãy đọc to lại câu trên!
           </Text>
         </View>
       )}
@@ -136,21 +200,21 @@ export const KaraokeLine = React.memo(
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 4,
+    marginVertical: 5,
     marginHorizontal: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 20,
+    borderRadius: 18,
     backgroundColor: 'transparent',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'transparent',
   },
   activeContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    borderColor: 'rgba(29, 185, 84, 0.35)',
-    shadowColor: '#1DB954',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
+    backgroundColor: IOS_COLORS.secondarySystemGroupedBackground,
+    borderColor: 'rgba(10, 132, 255, 0.35)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 4,
   },
@@ -160,53 +224,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  speakerLeftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  avatarCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  speakerBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: IOS_COLORS.tertiarySystemFill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
+  },
+  speakerText: {
+    ...IOS_TYPOGRAPHY.caption2,
+    fontWeight: '700',
+    color: IOS_COLORS.secondaryLabel,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   speakerRightRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  starBtn: {
-    padding: 4,
-    marginLeft: 4,
-  },
-  starIcon: {
-    fontSize: 17,
-    color: 'rgba(255, 255, 255, 0.25)',
-  },
-  starIconActive: {
-    color: '#FBBF24',
-    shadowColor: '#FBBF24',
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-  },
-  speakerBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  activeSpeakerBadge: {
-    backgroundColor: 'rgba(29, 185, 84, 0.2)',
-    borderColor: 'rgba(29, 185, 84, 0.4)',
-  },
-  speakerText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: 'rgba(255, 255, 255, 0.6)',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  activeSpeakerText: {
-    color: '#1DB954',
-  },
   timestampText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.35)',
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.tertiaryLabel,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
+  },
+  bookmarkBtn: {
+    padding: 4,
   },
   wordsRow: {
     flexDirection: 'row',
@@ -215,28 +277,28 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   translationText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: 'rgba(255, 255, 255, 0.3)',
-    fontStyle: 'italic',
+    ...IOS_TYPOGRAPHY.subheadline,
+    color: IOS_COLORS.tertiaryLabel,
   },
   activeTranslationText: {
-    color: '#94A3B8',
+    color: IOS_COLORS.secondaryLabel,
     fontWeight: '500',
   },
   shadowingBanner: {
     marginTop: 10,
-    backgroundColor: 'rgba(29, 185, 84, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(29, 185, 84, 0.4)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(48, 209, 88, 0.14)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(48, 209, 88, 0.45)',
     borderRadius: 12,
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
   shadowingBannerText: {
-    color: '#1DB954',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    ...IOS_TYPOGRAPHY.caption1,
+    color: IOS_COLORS.systemGreen,
+    fontWeight: '700',
   },
 });
