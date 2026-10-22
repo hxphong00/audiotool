@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
+  Platform,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -70,6 +72,171 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
     return null;
   }
 
+  const sheetBody = (
+    <>
+      {/* iOS Look Up Header: Word + IPA + Part of Speech */}
+      <View style={styles.header}>
+        <View style={styles.wordHeaderLeft}>
+          <Text style={styles.wordText}>{lookupData?.word || '...'}</Text>
+          <View style={styles.metaBadgesRow}>
+            {Boolean(lookupData?.phonetic) && (
+              <View style={styles.ipaBadge}>
+                <Text style={styles.ipaText}>{lookupData?.phonetic}</Text>
+              </View>
+            )}
+            {Boolean(lookupData?.part_of_speech) && (
+              <View style={styles.posBadge}>
+                <Text style={styles.posText}>
+                  {lookupData?.part_of_speech}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => {
+            triggerLightHaptic();
+            onClose();
+          }}
+          style={styles.closeBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons
+            name="close-circle"
+            size={28}
+            color={IOS_COLORS.tertiaryLabel}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.divider} />
+
+      {/* Body: Meaning & Context */}
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="small" color={IOS_COLORS.systemBlue} />
+          <Text style={styles.loadingText}>
+            Đang tra từ điển & ngữ cảnh...
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.content}>
+          <Text style={styles.label}>NGHĨA TIẾNG VIỆT</Text>
+          <Text style={styles.translationText}>
+            {lookupData?.translation_vi || 'Không tìm thấy bản dịch'}
+          </Text>
+
+          {Boolean(lookupData?.definition_vi || lookupData?.definition_en) && (
+            <View style={styles.definitionBox}>
+              {Boolean(lookupData?.definition_vi) && (
+                <View style={styles.defRow}>
+                  <Ionicons
+                    name="bulb-outline"
+                    size={16}
+                    color={IOS_COLORS.systemYellow}
+                    style={{ marginTop: 2 }}
+                  />
+                  <Text style={styles.definitionViText}>
+                    {lookupData?.definition_vi}
+                  </Text>
+                </View>
+              )}
+              {Boolean(lookupData?.definition_en) && (
+                <Text style={styles.definitionEnText}>
+                  {lookupData?.definition_en}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {Boolean(lookupData?.context_en) && (
+            <View style={styles.contextBox}>
+              <View style={styles.contextHeaderRow}>
+                <Ionicons
+                  name="chatbox-ellipses-outline"
+                  size={14}
+                  color={IOS_COLORS.systemBlue}
+                />
+                <Text style={styles.contextLabel}>NGỮ CẢNH TRONG BÀI</Text>
+              </View>
+              <Text style={styles.contextEnText}>
+                “{lookupData?.context_en}”
+              </Text>
+              {Boolean(lookupData?.context_vi) && (
+                <Text style={styles.contextViText}>
+                  {lookupData?.context_vi}
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+      )}
+
+      <View style={styles.actionRow}>
+        {Boolean(onSaveWord) && (
+          <TouchableOpacity
+            style={[
+              styles.saveWordBtn,
+              isWordSaved && styles.saveWordBtnActive,
+            ]}
+            activeOpacity={0.8}
+            onPress={() => {
+              if (lookupData) {
+                triggerSuccessHaptic();
+                onSaveWord?.(lookupData);
+              }
+            }}
+          >
+            <Ionicons
+              name={isWordSaved ? 'bookmark' : 'bookmark-outline'}
+              size={17}
+              color={
+                isWordSaved ? IOS_COLORS.systemYellow : IOS_COLORS.label
+              }
+            />
+            <Text
+              style={[
+                styles.saveWordBtnText,
+                isWordSaved && styles.saveWordBtnTextActive,
+              ]}
+            >
+              {isWordSaved ? 'Đã lưu sổ tay' : 'Lưu vào sổ tay'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={styles.actionBtn}
+          activeOpacity={0.85}
+          onPress={() => {
+            triggerLightHaptic();
+            onClose();
+          }}
+        >
+          <Ionicons name="play" size={16} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Tiếp tục nghe</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
+  if (Platform.OS === 'web') {
+    return (
+      <Pressable style={styles.webBackdrop} onPress={onClose}>
+        <Pressable
+          style={[styles.sheetBackground, styles.webSheetCard]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={styles.webHandleWrap}>
+            <View style={styles.handleIndicator} />
+          </View>
+          {sheetBody}
+        </Pressable>
+      </Pressable>
+    );
+  }
+
   return (
     <BottomSheet
       ref={bottomSheetRef}
@@ -82,150 +249,7 @@ export const TranslationSheet: React.FC<TranslationSheetProps> = ({
       handleIndicatorStyle={styles.handleIndicator}
     >
       <BottomSheetView style={styles.sheetContainer}>
-        {/* iOS Look Up Header: Word + IPA + Part of Speech */}
-        <View style={styles.header}>
-          <View style={styles.wordHeaderLeft}>
-            <Text style={styles.wordText}>{lookupData?.word || '...'}</Text>
-            <View style={styles.metaBadgesRow}>
-              {Boolean(lookupData?.phonetic) && (
-                <View style={styles.ipaBadge}>
-                  <Text style={styles.ipaText}>{lookupData?.phonetic}</Text>
-                </View>
-              )}
-              {Boolean(lookupData?.part_of_speech) && (
-                <View style={styles.posBadge}>
-                  <Text style={styles.posText}>
-                    {lookupData?.part_of_speech}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-
-          <TouchableOpacity
-            onPress={() => {
-              triggerLightHaptic();
-              onClose();
-            }}
-            style={styles.closeBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons
-              name="close-circle"
-              size={28}
-              color={IOS_COLORS.tertiaryLabel}
-            />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* Body: Meaning & Context */}
-        {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="small" color={IOS_COLORS.systemBlue} />
-            <Text style={styles.loadingText}>
-              Đang tra từ điển & ngữ cảnh...
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.content}>
-            <Text style={styles.label}>NGHĨA TIẾNG VIỆT</Text>
-            <Text style={styles.translationText}>
-              {lookupData?.translation_vi || 'Không tìm thấy bản dịch'}
-            </Text>
-
-            {Boolean(lookupData?.definition_vi || lookupData?.definition_en) && (
-              <View style={styles.definitionBox}>
-                {Boolean(lookupData?.definition_vi) && (
-                  <View style={styles.defRow}>
-                    <Ionicons
-                      name="bulb-outline"
-                      size={16}
-                      color={IOS_COLORS.systemYellow}
-                      style={{ marginTop: 2 }}
-                    />
-                    <Text style={styles.definitionViText}>
-                      {lookupData?.definition_vi}
-                    </Text>
-                  </View>
-                )}
-                {Boolean(lookupData?.definition_en) && (
-                  <Text style={styles.definitionEnText}>
-                    {lookupData?.definition_en}
-                  </Text>
-                )}
-              </View>
-            )}
-
-            {Boolean(lookupData?.context_en) && (
-              <View style={styles.contextBox}>
-                <View style={styles.contextHeaderRow}>
-                  <Ionicons
-                    name="chatbox-ellipses-outline"
-                    size={14}
-                    color={IOS_COLORS.systemBlue}
-                  />
-                  <Text style={styles.contextLabel}>NGỮ CẢNH TRONG BÀI</Text>
-                </View>
-                <Text style={styles.contextEnText}>
-                  “{lookupData?.context_en}”
-                </Text>
-                {Boolean(lookupData?.context_vi) && (
-                  <Text style={styles.contextViText}>
-                    {lookupData?.context_vi}
-                  </Text>
-                )}
-              </View>
-            )}
-          </View>
-        )}
-
-        <View style={styles.actionRow}>
-          {Boolean(onSaveWord) && (
-            <TouchableOpacity
-              style={[
-                styles.saveWordBtn,
-                isWordSaved && styles.saveWordBtnActive,
-              ]}
-              activeOpacity={0.8}
-              onPress={() => {
-                if (lookupData) {
-                  triggerSuccessHaptic();
-                  onSaveWord?.(lookupData);
-                }
-              }}
-            >
-              <Ionicons
-                name={isWordSaved ? 'bookmark' : 'bookmark-outline'}
-                size={17}
-                color={
-                  isWordSaved ? IOS_COLORS.systemYellow : IOS_COLORS.label
-                }
-              />
-              <Text
-                style={[
-                  styles.saveWordBtnText,
-                  isWordSaved && styles.saveWordBtnTextActive,
-                ]}
-              >
-                {isWordSaved ? 'Đã lưu sổ tay' : 'Lưu vào sổ tay'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={styles.actionBtn}
-            activeOpacity={0.85}
-            onPress={() => {
-              triggerLightHaptic();
-              onClose();
-            }}
-          >
-            <Ionicons name="play" size={16} color="#FFFFFF" />
-            <Text style={styles.actionBtnText}>Tiếp tục nghe</Text>
-          </TouchableOpacity>
-        </View>
+        {sheetBody}
       </BottomSheetView>
     </BottomSheet>
   );
@@ -409,5 +433,24 @@ const styles = StyleSheet.create({
     ...IOS_TYPOGRAPHY.subheadline,
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  webBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+    zIndex: 999,
+  },
+  webSheetCard: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 28,
+  },
+  webHandleWrap: {
+    alignItems: 'center',
+    marginBottom: 10,
   },
 });

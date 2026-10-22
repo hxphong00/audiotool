@@ -4,8 +4,16 @@ import { DialogueData, DialogueSummary, WordLookupResult } from '../types';
 const API_URL_STORAGE_KEY = '@audiotool_api_base_url';
 const SHADOWING_PAUSE_STORAGE_KEY = '@audiotool_shadowing_pause_sec';
 
-// Default Mac LAN IP for iPhone 13 (iOS 18.1) connection over Wi-Fi
-let API_BASE_URL = 'http://192.168.1.220:8000';
+export function getDefaultApiBaseUrl(): string {
+  const host = (globalThis as any)?.location?.hostname;
+  if (host && typeof host === 'string') {
+    return `http://${host}:8000`;
+  }
+  return 'http://10.10.10.48:8000';
+}
+
+// Default LAN IP or browser hostname for Backend API connection
+let API_BASE_URL = getDefaultApiBaseUrl();
 // 0 = Off (uses standard 0.4s natural gap); >0 = Shadowing Pause in seconds (e.g. 2.0 or 3.0)
 let SHADOWING_PAUSE_SEC = 0;
 

@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: audiotool-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app/storage:/app/app/storage
+    restart: unless-stopped
+
+  mobile-web:
+    build:
+      context: ./mobile-app
+      dockerfile: Dockerfile
+    container_name: audiotool-mobile-web
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped

@@ -27,6 +27,7 @@ import { LibraryScreen } from '../src/screens/LibraryScreen';
 import { ImportScreen } from '../src/screens/ImportScreen';
 import { StudyDeckScreen } from '../src/screens/StudyDeckScreen';
 import { PlayerScreen } from '../src/screens/PlayerScreen';
+import { getDefaultApiBaseUrl } from '../src/services/apiService';
 
 test('iOS Theme: exposes Apple HIG Dark Mode system colors and hairline separator', () => {
   assert.equal(IOS_COLORS.systemBackground, '#000000');
@@ -212,4 +213,7 @@ test('UI Components: all refactored iOS screens and components load and instanti
 
   const playerElement = React.createElement(PlayerScreen, {});
   assert.ok(React.isValidElement(playerElement));
+
+  const defaultUrl = getDefaultApiBaseUrl();
+  assert.ok(defaultUrl.startsWith('http://') && defaultUrl.endsWith(':8000'));
 });
