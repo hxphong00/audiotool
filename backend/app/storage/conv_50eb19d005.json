@@ -1,0 +1,202 @@
+{
+  "conversation_id": "conv_50eb19d005",
+  "title": "Daily Commute Conversation",
+  "created_at": "2026-10-21T16:33:36.199045+00:00",
+  "total_duration": 14.4,
+  "silence_sec": 0.4,
+  "accent": "us",
+  "emotion": "natural",
+  "audio_url": "http://192.168.1.220:8000/static/conv_50eb19d005.mp3",
+  "audio_stream_url": "http://192.168.1.220:8000/api/audio/conv_50eb19d005/stream",
+  "offline_filename": "conv_50eb19d005.mp3",
+  "speakers": {
+    "Alex": {
+      "name": "Alex",
+      "voice": "en-US-AndrewNeural",
+      "gender": "male",
+      "accent": "us"
+    },
+    "Sarah": {
+      "name": "Sarah",
+      "voice": "en-US-AvaNeural",
+      "gender": "female",
+      "accent": "us"
+    }
+  },
+  "segments": [
+    {
+      "id": 1,
+      "speaker": "Alex",
+      "speaker_name": "Alex",
+      "text_en": "Hey Sarah, are you caught in the morning rush hour too?",
+      "text_vi": "Này Sarah, bạn cũng bị kẹt vào giờ cao điểm buổi sáng phải không?",
+      "words": [
+        {
+          "word": "Hey",
+          "start": 0.113,
+          "end": 0.225
+        },
+        {
+          "word": "Sarah,",
+          "start": 0.237,
+          "end": 0.55
+        },
+        {
+          "word": "are",
+          "start": 0.925,
+          "end": 1.025
+        },
+        {
+          "word": "you",
+          "start": 1.038,
+          "end": 1.137
+        },
+        {
+          "word": "caught",
+          "start": 1.15,
+          "end": 1.375
+        },
+        {
+          "word": "in",
+          "start": 1.387,
+          "end": 1.438
+        },
+        {
+          "word": "the",
+          "start": 1.45,
+          "end": 1.512
+        },
+        {
+          "word": "morning",
+          "start": 1.525,
+          "end": 1.812
+        },
+        {
+          "word": "rush",
+          "start": 1.825,
+          "end": 2.05
+        },
+        {
+          "word": "hour",
+          "start": 2.062,
+          "end": 2.25
+        },
+        {
+          "word": "too?",
+          "start": 2.263,
+          "end": 2.513
+        }
+      ],
+      "start": 0.0,
+      "end": 2.71
+    },
+    {
+      "id": 2,
+      "speaker": "Sarah",
+      "speaker_name": "Sarah",
+      "text_en": "dfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf",
+      "text_vi": "dfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf",
+      "words": [
+        {
+          "word": "dfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf",
+          "start": 3.21,
+          "end": 8.085
+        }
+      ],
+      "start": 3.11,
+      "end": 8.29
+    },
+    {
+      "id": 3,
+      "speaker": "Alex",
+      "speaker_name": "Alex",
+      "text_en": "Are you taking the subway tomorrow instead?",
+      "text_vi": "Thay vào đó, ngày mai bạn sẽ đi tàu điện ngầm phải không?",
+      "words": [
+        {
+          "word": "Are",
+          "start": 8.79,
+          "end": 8.865
+        },
+        {
+          "word": "you",
+          "start": 8.878,
+          "end": 8.953
+        },
+        {
+          "word": "taking",
+          "start": 8.965,
+          "end": 9.252
+        },
+        {
+          "word": "the",
+          "start": 9.265,
+          "end": 9.34
+        },
+        {
+          "word": "subway",
+          "start": 9.352,
+          "end": 9.665
+        },
+        {
+          "word": "tomorrow",
+          "start": 9.678,
+          "end": 10.09
+        },
+        {
+          "word": "instead?",
+          "start": 10.103,
+          "end": 10.515
+        }
+      ],
+      "start": 8.69,
+      "end": 10.71
+    },
+    {
+      "id": 4,
+      "speaker": "Sarah",
+      "speaker_name": "Sarah",
+      "text_en": "Definitely! It only takes twenty minutes downtown.",
+      "text_vi": "Chắc chắn! Chỉ mất hai mươi phút vào trung tâm thành phố.",
+      "words": [
+        {
+          "word": "Definitely!",
+          "start": 11.21,
+          "end": 11.91
+        },
+        {
+          "word": "It",
+          "start": 12.273,
+          "end": 12.485
+        },
+        {
+          "word": "only",
+          "start": 12.51,
+          "end": 12.76
+        },
+        {
+          "word": "takes",
+          "start": 12.773,
+          "end": 13.098
+        },
+        {
+          "word": "twenty",
+          "start": 13.11,
+          "end": 13.398
+        },
+        {
+          "word": "minutes",
+          "start": 13.41,
+          "end": 13.735
+        },
+        {
+          "word": "downtown.",
+          "start": 13.748,
+          "end": 14.385
+        }
+      ],
+      "start": 11.11,
+      "end": 14.59
+    }
+  ]
+}

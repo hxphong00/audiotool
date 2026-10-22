@@ -1,0 +1,332 @@
+{
+  "conversation_id": "conv_5a6b28666b",
+  "title": "Ordering Coffee at Starbucks",
+  "created_at": "2026-10-21T16:13:23.498167+00:00",
+  "total_duration": 17.47,
+  "silence_sec": 0.6,
+  "accent": "us",
+  "emotion": "natural",
+  "audio_url": "http://127.0.0.1:8000/static/conv_5a6b28666b.mp3",
+  "audio_stream_url": "http://127.0.0.1:8000/api/audio/conv_5a6b28666b/stream",
+  "offline_filename": "conv_5a6b28666b.mp3",
+  "speakers": {
+    "Alex": {
+      "name": "Alex",
+      "voice": "en-US-AndrewNeural",
+      "gender": "male",
+      "accent": "us"
+    },
+    "Sarah": {
+      "name": "Sarah",
+      "voice": "en-US-AvaNeural",
+      "gender": "female",
+      "accent": "us"
+    }
+  },
+  "segments": [
+    {
+      "id": 1,
+      "speaker": "Alex",
+      "speaker_name": "Alex",
+      "text_en": "Hi Sarah, could I get a large iced caramel macchiato please?",
+      "text_vi": "Xin chào Sarah, cho tôi xin một ly macchiato caramel đá lớn được không?",
+      "words": [
+        {
+          "word": "Hi",
+          "start": 0.113,
+          "end": 0.225
+        },
+        {
+          "word": "Sarah,",
+          "start": 0.237,
+          "end": 0.613
+        },
+        {
+          "word": "could",
+          "start": 0.912,
+          "end": 1.038
+        },
+        {
+          "word": "I",
+          "start": 1.05,
+          "end": 1.113
+        },
+        {
+          "word": "get",
+          "start": 1.125,
+          "end": 1.238
+        },
+        {
+          "word": "a",
+          "start": 1.25,
+          "end": 1.288
+        },
+        {
+          "word": "large",
+          "start": 1.3,
+          "end": 1.738
+        },
+        {
+          "word": "iced",
+          "start": 1.863,
+          "end": 2.1
+        },
+        {
+          "word": "caramel",
+          "start": 2.112,
+          "end": 2.487
+        },
+        {
+          "word": "macchiato",
+          "start": 2.5,
+          "end": 3.0
+        },
+        {
+          "word": "please?",
+          "start": 3.013,
+          "end": 3.513
+        }
+      ],
+      "start": 0.0,
+      "end": 3.72
+    },
+    {
+      "id": 2,
+      "speaker": "Sarah",
+      "speaker_name": "Sarah",
+      "text_en": "Sure thing Alex! Would you like oat milk or regular whole milk with that?",
+      "text_vi": "Chắc chắn rồi Alex! Bạn muốn dùng sữa yến mạch hay sữa nguyên chất thông thường với thứ đó?",
+      "words": [
+        {
+          "word": "Sure",
+          "start": 4.42,
+          "end": 4.77
+        },
+        {
+          "word": "thing",
+          "start": 4.783,
+          "end": 4.97
+        },
+        {
+          "word": "Alex!",
+          "start": 4.982,
+          "end": 5.52
+        },
+        {
+          "word": "Would",
+          "start": 5.882,
+          "end": 6.095
+        },
+        {
+          "word": "you",
+          "start": 6.108,
+          "end": 6.195
+        },
+        {
+          "word": "like",
+          "start": 6.207,
+          "end": 6.395
+        },
+        {
+          "word": "oat",
+          "start": 6.42,
+          "end": 6.52
+        },
+        {
+          "word": "milk",
+          "start": 6.532,
+          "end": 6.845
+        },
+        {
+          "word": "or",
+          "start": 6.882,
+          "end": 7.182
+        },
+        {
+          "word": "regular",
+          "start": 7.195,
+          "end": 7.557
+        },
+        {
+          "word": "whole",
+          "start": 7.57,
+          "end": 7.733
+        },
+        {
+          "word": "milk",
+          "start": 7.745,
+          "end": 7.945
+        },
+        {
+          "word": "with",
+          "start": 7.958,
+          "end": 8.07
+        },
+        {
+          "word": "that?",
+          "start": 8.083,
+          "end": 8.357
+        }
+      ],
+      "start": 4.32,
+      "end": 8.57
+    },
+    {
+      "id": 3,
+      "speaker": "Alex",
+      "speaker_name": "Alex",
+      "text_en": "Oat milk please, and an extra shot of espresso to wake me up.",
+      "text_vi": "Làm ơn cho sữa yến mạch và thêm một cốc espresso để đánh thức tôi dậy.",
+      "words": [
+        {
+          "word": "Oat",
+          "start": 9.27,
+          "end": 9.457
+        },
+        {
+          "word": "milk",
+          "start": 9.47,
+          "end": 9.72
+        },
+        {
+          "word": "please,",
+          "start": 9.732,
+          "end": 10.307
+        },
+        {
+          "word": "and",
+          "start": 10.533,
+          "end": 10.645
+        },
+        {
+          "word": "an",
+          "start": 10.658,
+          "end": 10.745
+        },
+        {
+          "word": "extra",
+          "start": 10.757,
+          "end": 11.07
+        },
+        {
+          "word": "shot",
+          "start": 11.083,
+          "end": 11.358
+        },
+        {
+          "word": "of",
+          "start": 11.37,
+          "end": 11.433
+        },
+        {
+          "word": "espresso",
+          "start": 11.445,
+          "end": 11.895
+        },
+        {
+          "word": "to",
+          "start": 11.907,
+          "end": 12.045
+        },
+        {
+          "word": "wake",
+          "start": 12.058,
+          "end": 12.27
+        },
+        {
+          "word": "me",
+          "start": 12.282,
+          "end": 12.445
+        },
+        {
+          "word": "up.",
+          "start": 12.458,
+          "end": 12.683
+        }
+      ],
+      "start": 9.17,
+      "end": 12.89
+    },
+    {
+      "id": 4,
+      "speaker": "Sarah",
+      "speaker_name": "Sarah",
+      "text_en": "You got it! That will be five dollars and twenty cents at the window.",
+      "text_vi": "Bạn hiểu rồi! Đó sẽ là năm đô la và hai mươi xu ở cửa sổ.",
+      "words": [
+        {
+          "word": "You",
+          "start": 13.59,
+          "end": 13.815
+        },
+        {
+          "word": "got",
+          "start": 13.828,
+          "end": 14.04
+        },
+        {
+          "word": "it!",
+          "start": 14.052,
+          "end": 14.277
+        },
+        {
+          "word": "That",
+          "start": 14.64,
+          "end": 14.877
+        },
+        {
+          "word": "will",
+          "start": 14.89,
+          "end": 14.978
+        },
+        {
+          "word": "be",
+          "start": 14.99,
+          "end": 15.127
+        },
+        {
+          "word": "five",
+          "start": 15.14,
+          "end": 15.465
+        },
+        {
+          "word": "dollars",
+          "start": 15.478,
+          "end": 15.915
+        },
+        {
+          "word": "and",
+          "start": 15.928,
+          "end": 16.153
+        },
+        {
+          "word": "twenty",
+          "start": 16.165,
+          "end": 16.528
+        },
+        {
+          "word": "cents",
+          "start": 16.54,
+          "end": 16.84
+        },
+        {
+          "word": "at",
+          "start": 16.852,
+          "end": 16.928
+        },
+        {
+          "word": "the",
+          "start": 16.94,
+          "end": 17.015
+        },
+        {
+          "word": "window.",
+          "start": 17.028,
+          "end": 17.477
+        }
+      ],
+      "start": 13.49,
+      "end": 17.67
+    }
+  ]
+}

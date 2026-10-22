@@ -126,6 +126,72 @@ export function findActiveOrPrecedingSegmentIndex(
 }
 
 /**
+ * Finds the accurate timestamp `{ start, end }` for a tapped word inside a segment.
+ * If word text is provided, cleans punctuation and matches against segment.words.
+ * If not found, falls back safely to the beginning of the entire sentence.
+ */
+export function findWordTimestamp(
+  segment: DialogueSegment,
+  wordText?: string,
+  wordIndex?: number
+): { start: number; end: number } {
+  if (!segment) {
+    return { start: 0, end: 0 };
+  }
+
+  const words = segment.words || [];
+
+  // Match by index if valid
+  if (
+    typeof wordIndex === 'number' &&
+    wordIndex >= 0 &&
+    wordIndex < words.length
+  ) {
+    return {
+      start: words[wordIndex].start,
+      end: words[wordIndex].end,
+    };
+  }
+
+  // Match by cleaned word text
+  if (wordText && words.length > 0) {
+    const cleanQuery = wordText
+      .replace(/^[^a-zA-Z0-9']+|[^a-zA-Z0-9']+$/g, '')
+      .toLowerCase();
+
+    for (let i = 0; i < words.length; i++) {
+      const candidate = words[i].word
+        .replace(/^[^a-zA-Z0-9']+|[^a-zA-Z0-9']+$/g, '')
+        .toLowerCase();
+      if (candidate === cleanQuery) {
+        return {
+          start: words[i].start,
+          end: words[i].end,
+        };
+      }
+    }
+  }
+
+  // Fallback to start of the sentence
+  return {
+    start: segment.start,
+    end: segment.end,
+  };
+}
+
+/**
+ * Determines whether the active sentence should automatically scroll into view.
+ * If user is currently dragging/scrolling, auto-scroll is PAUSED so the screen never jumps.
+ */
+export function shouldAutoScroll(
+  isUserScrolling: boolean,
+  activeTab: string,
+  hasSegments: boolean
+): boolean {
+  return !isUserScrolling && activeTab === 'player' && Boolean(hasSegments);
+}
+
+/**
  * Smart sentence-level rewind for Lock Screen (-5s button) and AirPods (double/triple press):
  * - Press 1: Jump to the exact start of the current sentence (`currentSegment.start`).
  * - Press 2 (within the first 0.85s of the sentence): Jump back to the previous sentence!

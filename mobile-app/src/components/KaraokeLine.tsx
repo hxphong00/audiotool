@@ -9,7 +9,18 @@ interface KaraokeLineProps {
   isActive: boolean;
   isShadowingPauseActive?: boolean;
   isBookmarked?: boolean;
-  onWordPress: (word: string, segment: DialogueSegment) => void;
+  onWordPress: (
+    word: string,
+    segment: DialogueSegment,
+    wordIndex?: number,
+    wordMeta?: { start: number; end: number }
+  ) => void;
+  onWordLongPress?: (
+    word: string,
+    segment: DialogueSegment,
+    wordIndex?: number,
+    wordMeta?: { start: number; end: number }
+  ) => void;
   onLinePress: (segment: DialogueSegment) => void;
   onToggleBookmark?: (segment: DialogueSegment) => void;
 }
@@ -21,6 +32,7 @@ const KaraokeLineComponent: React.FC<KaraokeLineProps> = ({
   isShadowingPauseActive = false,
   isBookmarked = false,
   onWordPress,
+  onWordLongPress,
   onLinePress,
   onToggleBookmark,
 }) => {
@@ -68,7 +80,18 @@ const KaraokeLineComponent: React.FC<KaraokeLineProps> = ({
               word={w.word}
               isSentenceActive={isActive}
               isWordActive={isWordActive}
-              onPress={(tappedWord) => onWordPress(tappedWord, segment)}
+              onPress={(tappedWord) =>
+                onWordPress(tappedWord, segment, index, {
+                  start: w.start,
+                  end: w.end,
+                })
+              }
+              onLongPress={(tappedWord) =>
+                onWordLongPress?.(tappedWord, segment, index, {
+                  start: w.start,
+                  end: w.end,
+                })
+              }
             />
           );
         })}
@@ -113,21 +136,22 @@ export const KaraokeLine = React.memo(
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 4,
     marginHorizontal: 16,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#181818',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#242424',
+    borderColor: 'transparent',
   },
   activeContainer: {
-    backgroundColor: '#222222',
-    borderColor: '#1DB954',
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    borderColor: 'rgba(29, 185, 84, 0.35)',
     shadowColor: '#1DB954',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
-    shadowRadius: 10,
+    shadowRadius: 16,
     elevation: 4,
   },
   speakerRow: {
@@ -142,68 +166,77 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   starBtn: {
-    padding: 2,
+    padding: 4,
     marginLeft: 4,
   },
   starIcon: {
-    fontSize: 16,
-    color: '#666666',
+    fontSize: 17,
+    color: 'rgba(255, 255, 255, 0.25)',
   },
   starIconActive: {
-    color: '#FFD700',
+    color: '#FBBF24',
+    shadowColor: '#FBBF24',
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
   },
   speakerBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   activeSpeakerBadge: {
     backgroundColor: 'rgba(29, 185, 84, 0.2)',
+    borderColor: 'rgba(29, 185, 84, 0.4)',
   },
   speakerText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#9E9E9E',
+    fontSize: 11,
+    fontWeight: '800',
+    color: 'rgba(255, 255, 255, 0.6)',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   activeSpeakerText: {
     color: '#1DB954',
   },
   timestampText: {
-    fontSize: 11,
-    color: '#666666',
-    fontWeight: '500',
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.35)',
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
   },
   wordsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   translationText: {
     fontSize: 15,
     lineHeight: 22,
-    color: '#5A5A5A',
+    color: 'rgba(255, 255, 255, 0.3)',
     fontStyle: 'italic',
   },
   activeTranslationText: {
-    color: '#D0D0D0',
+    color: '#94A3B8',
     fontWeight: '500',
   },
   shadowingBanner: {
     marginTop: 10,
-    backgroundColor: 'rgba(29, 185, 84, 0.18)',
+    backgroundColor: 'rgba(29, 185, 84, 0.15)',
     borderWidth: 1,
-    borderColor: '#1DB954',
-    borderRadius: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    borderColor: 'rgba(29, 185, 84, 0.4)',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   shadowingBannerText: {
     color: '#1DB954',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

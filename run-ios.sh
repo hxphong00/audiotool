@@ -11,7 +11,7 @@ elif [ -d "$HOME/.nvm/versions/node" ]; then
   LATEST_NODE="$(ls -1 "$HOME/.nvm/versions/node" | tail -n 1)"
   export PATH="$HOME/.nvm/versions/node/$LATEST_NODE/bin:$PATH"
 fi
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PATH="$HOME/homebrew/Library/Homebrew/vendor/portable-ruby/current/bin:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "127.0.0.1")"
 

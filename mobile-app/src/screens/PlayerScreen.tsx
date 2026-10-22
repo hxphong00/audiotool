@@ -45,6 +45,8 @@ import {
   setupTrackPlayer,
   smartRewindToSentenceStart,
   smartSkipToNextSentence,
+  findWordTimestamp,
+  shouldAutoScroll,
 } from '../services/trackPlayerService';
 import {
   DialogueData,
@@ -230,6 +232,10 @@ export const PlayerScreen: React.FC = () => {
 
   const flatListRef = useRef<FlatList<DialogueSegment>>(null);
   const lastScrolledIndex = useRef<number>(-1);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const [pronouncingWord, setPronouncingWord] = useState<string | null>(null);
+  const scrollResumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pronounceToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { isPlaying, position, duration, activeSegmentIndex } = useKaraokeSync(
     dialogue.segments,
@@ -328,11 +334,50 @@ export const PlayerScreen: React.FC = () => {
   }
 
   // Smooth auto-scroll active sentence to 40% from top of screen
+  // When user is scrolling, auto-scroll is PAUSED so the screen never jumps
   useEffect(() => {
     if (
-      activeTab === 'player' &&
+      shouldAutoScroll(
+        isUserScrolling,
+        activeTab,
+        dialogue.segments.length > activeSegmentIndex
+      ) &&
       activeSegmentIndex !== -1 &&
-      activeSegmentIndex !== lastScrolledIndex.current &&
+      activeSegmentIndex !== lastScrolledIndex.current
+    ) {
+      lastScrolledIndex.current = activeSegmentIndex;
+      flatListRef.current?.scrollToIndex({
+        index: activeSegmentIndex,
+        animated: true,
+        viewPosition: 0.4,
+      });
+    }
+  }, [activeSegmentIndex, activeTab, dialogue.segments.length, isUserScrolling]);
+
+  const handleScrollBeginDrag = useCallback(() => {
+    if (scrollResumeTimerRef.current) {
+      clearTimeout(scrollResumeTimerRef.current);
+    }
+    setIsUserScrolling(true);
+  }, []);
+
+  const handleScrollEndDrag = useCallback(() => {
+    if (scrollResumeTimerRef.current) {
+      clearTimeout(scrollResumeTimerRef.current);
+    }
+    // Tự động bám sát lại câu đang phát sau 4.5 giây người dùng dừng vuốt
+    scrollResumeTimerRef.current = setTimeout(() => {
+      setIsUserScrolling(false);
+    }, 4500);
+  }, []);
+
+  const handleResumeAutoScroll = useCallback(() => {
+    if (scrollResumeTimerRef.current) {
+      clearTimeout(scrollResumeTimerRef.current);
+    }
+    setIsUserScrolling(false);
+    if (
+      activeSegmentIndex !== -1 &&
       dialogue.segments.length > activeSegmentIndex
     ) {
       lastScrolledIndex.current = activeSegmentIndex;
@@ -342,7 +387,7 @@ export const PlayerScreen: React.FC = () => {
         viewPosition: 0.4,
       });
     }
-  }, [activeSegmentIndex, activeTab, dialogue.segments.length]);
+  }, [activeSegmentIndex, dialogue.segments.length]);
 
   // Dynamic Player Shadowing Pause Mode (when user enables shadowingPauseSec > 0 on a standard 0.4s track)
   useEffect(() => {
@@ -436,8 +481,38 @@ export const PlayerScreen: React.FC = () => {
     [isPlaying]
   );
 
-  // Word Tap-to-Translate with context & smart resume
+  // Word Tap-to-Speak: Tapping a word immediately seeks and speaks that exact word!
   const handleWordPress = useCallback(
+    async (
+      word: string,
+      segment: DialogueSegment,
+      wordIndex?: number,
+      wordMeta?: { start: number; end: number }
+    ) => {
+      const ts =
+        wordMeta && typeof wordMeta.start === 'number'
+          ? wordMeta
+          : findWordTimestamp(segment, word, wordIndex);
+
+      // Seek audio to exact word start timestamp & speak immediately
+      await seekPlayerTo(ts.start);
+      await playAudio();
+
+      const cleanWord = word.replace(/^[^a-zA-Z0-9']+|[^a-zA-Z0-9']+$/g, '');
+      setPronouncingWord(cleanWord || word);
+
+      if (pronounceToastTimerRef.current) {
+        clearTimeout(pronounceToastTimerRef.current);
+      }
+      pronounceToastTimerRef.current = setTimeout(() => {
+        setPronouncingWord(null);
+      }, 2000);
+    },
+    []
+  );
+
+  // Word Long-Press (350ms) to open full Dictionary Translation & IPA Sheet
+  const handleWordLongPress = useCallback(
     async (word: string, segment: DialogueSegment) => {
       wasPlayingBeforeLookupRef.current = isPlaying;
       if (isPlaying) {
@@ -568,54 +643,70 @@ export const PlayerScreen: React.FC = () => {
 
       {/* Top Navigation & Status Header */}
       <View style={styles.header}>
-        <View style={styles.headerTitleWrap}>
-          <View style={styles.categoryRow}>
-            <Text style={styles.headerCategory}>LUYỆN NGHE ĐI XE</Text>
-            {dialogue.is_offline ? (
-              <View style={styles.offlineTag}>
-                <Text style={styles.offlineTagText}>✓ OFFLINE</Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.downloadQuickTag}
-                onPress={handleQuickSaveCurrentOffline}
-              >
-                <Text style={styles.downloadQuickTagText}>⬇ Lưu máy</Text>
-              </TouchableOpacity>
-            )}
+        <View style={styles.categoryRow}>
+          <Text style={styles.headerCategory}>LUYỆN NGHE ĐI XE</Text>
+          {dialogue.is_offline ? (
+            <View style={styles.offlineTag}>
+              <Text style={styles.offlineTagText}>✓ OFFLINE</Text>
+            </View>
+          ) : (
             <TouchableOpacity
-              style={[
-                styles.awakeTag,
-                keepScreenAwake && styles.awakeTagActive,
-              ]}
-              onPress={() => setKeepScreenAwake((prev) => !prev)}
+              style={styles.downloadQuickTag}
+              onPress={handleQuickSaveCurrentOffline}
             >
-              <Text
-                style={[
-                  styles.awakeTagText,
-                  keepScreenAwake && styles.awakeTagTextActive,
-                ]}
-              >
-                {keepScreenAwake ? '🔆 Giữ sáng' : '🌙 Tự tắt'}
+              <Text style={styles.downloadQuickTagText}>⬇ Lưu máy</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[
+              styles.awakeTag,
+              keepScreenAwake && styles.awakeTagActive,
+            ]}
+            onPress={() => setKeepScreenAwake((prev) => !prev)}
+          >
+            <Text
+              style={[
+                styles.awakeTagText,
+                keepScreenAwake && styles.awakeTagTextActive,
+              ]}
+            >
+              {keepScreenAwake ? '🔆 Sáng' : '🌙 Tắt'}
+            </Text>
+          </TouchableOpacity>
+          {shadowingPauseSec > 0 && (
+            <TouchableOpacity
+              style={[styles.awakeTag, styles.awakeTagActive]}
+              onPress={() => setActiveTab('import')}
+            >
+              <Text style={[styles.awakeTagText, styles.awakeTagTextActive]}>
+                🗣 Nhẩm {shadowingPauseSec}s
               </Text>
             </TouchableOpacity>
-            {shadowingPauseSec > 0 && (
-              <TouchableOpacity
-                style={[styles.awakeTag, styles.awakeTagActive]}
-                onPress={() => setActiveTab('import')}
-              >
-                <Text style={[styles.awakeTagText, styles.awakeTagTextActive]}>
-                  🗣 Nhẩm {shadowingPauseSec}s
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {dialogue.title}
-          </Text>
+          )}
         </View>
 
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {dialogue.title}
+        </Text>
+
         <View style={styles.headerBtnGroup}>
+          <TouchableOpacity
+            style={[
+              styles.navBtn,
+              activeTab === 'player' && styles.activeNavBtn,
+            ]}
+            onPress={() => setActiveTab('player')}
+          >
+            <Text
+              style={[
+                styles.navBtnText,
+                activeTab === 'player' && styles.activeNavBtnText,
+              ]}
+            >
+              🎧 Bài nghe
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[
               styles.navBtn,
@@ -737,7 +828,10 @@ export const PlayerScreen: React.FC = () => {
           data={dialogue.segments}
           keyExtractor={(item) => `segment_${item.id}`}
           contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
+          onScrollBeginDrag={handleScrollBeginDrag}
+          onScrollEndDrag={handleScrollEndDrag}
+          onMomentumScrollEnd={handleScrollEndDrag}
           onScrollToIndexFailed={(info) => {
             setTimeout(() => {
               flatListRef.current?.scrollToIndex({
@@ -770,11 +864,31 @@ export const PlayerScreen: React.FC = () => {
                 isBookmarked={bookmarkedIds.has(sentenceBookmarkId)}
                 onToggleBookmark={handleToggleBookmarkSentence}
                 onWordPress={handleWordPress}
+                onWordLongPress={handleWordLongPress}
                 onLinePress={handleJumpToLine}
               />
             );
           }}
         />
+      )}
+
+      {/* Floating Re-sync Pill when user is manually scrolling during playback */}
+      {isUserScrolling && activeTab === 'player' && isPlaying && (
+        <TouchableOpacity
+          style={styles.floatingResyncBtn}
+          onPress={handleResumeAutoScroll}
+        >
+          <Text style={styles.floatingResyncBtnText}>⬇ Về câu đang phát</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Floating Toast when a word is tapped to speak */}
+      {Boolean(pronouncingWord) && (
+        <View style={styles.wordPronounceToast}>
+          <Text style={styles.wordPronounceToastText}>
+            🔊 Đang nói từ: "{pronouncingWord}"
+          </Text>
+        </View>
       )}
 
       {/* Persistent Bottom Audio Controls */}
@@ -811,39 +925,38 @@ export const PlayerScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#090D14',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 14,
+    paddingTop: 8,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#222222',
-  },
-  headerTitleWrap: {
-    flex: 1,
-    marginRight: 10,
+    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
+    backgroundColor: 'rgba(9, 13, 20, 0.95)',
+    gap: 10,
   },
   categoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
   },
   headerCategory: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: '#1DB954',
-    letterSpacing: 1.1,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   offlineTag: {
-    backgroundColor: 'rgba(29, 185, 84, 0.2)',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
+    backgroundColor: 'rgba(29, 185, 84, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: 'rgba(29, 185, 84, 0.4)',
   },
   offlineTagText: {
     color: '#1DB954',
@@ -851,32 +964,32 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   downloadQuickTag: {
-    backgroundColor: '#252525',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#3A3A3A',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   downloadQuickTagText: {
-    color: '#CCCCCC',
+    color: '#CBD5E1',
     fontSize: 10,
     fontWeight: '700',
   },
   awakeTag: {
-    backgroundColor: '#252525',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#3A3A3A',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   awakeTagActive: {
-    backgroundColor: 'rgba(29, 185, 84, 0.16)',
-    borderColor: '#1DB954',
+    backgroundColor: 'rgba(29, 185, 84, 0.18)',
+    borderColor: 'rgba(29, 185, 84, 0.5)',
   },
   awakeTagText: {
-    color: '#999999',
+    color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 10,
     fontWeight: '700',
   },
@@ -884,37 +997,89 @@ const styles = StyleSheet.create({
     color: '#1DB954',
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#F8FAFC',
+    letterSpacing: -0.4,
   },
   headerBtnGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 14,
+    padding: 3,
+    gap: 2,
+    marginTop: 2,
   },
   navBtn: {
-    paddingHorizontal: 11,
+    flex: 1,
     paddingVertical: 7,
-    backgroundColor: '#242424',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#333333',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 11,
   },
   activeNavBtn: {
-    backgroundColor: '#1DB954',
-    borderColor: '#1DB954',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   navBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.65)',
+    fontSize: 11,
     fontWeight: '700',
   },
   activeNavBtnText: {
     color: '#000000',
+    fontWeight: '800',
   },
   listContent: {
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingBottom: 28,
+  },
+  floatingResyncBtn: {
+    position: 'absolute',
+    bottom: 124,
+    alignSelf: 'center',
+    backgroundColor: '#1DB954',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 100,
+  },
+  floatingResyncBtnText: {
+    color: '#000000',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  wordPronounceToast: {
+    position: 'absolute',
+    bottom: 128,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(24, 24, 24, 0.95)',
+    borderWidth: 1.5,
+    borderColor: '#1DB954',
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#1DB954',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    zIndex: 100,
+  },
+  wordPronounceToastText: {
+    color: '#1DB954',
+    fontWeight: '800',
+    fontSize: 14,
   },
 });

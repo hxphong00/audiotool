@@ -287,3 +287,72 @@ test('SM-2: ensureInitialSM2Schedule creates 1-day interval if uninitialized', a
   assert.equal(all['conv_initial_sm2'].interval_days, 7);
 });
 
+// ============================================================================
+// TEST SUITE 7: Tap Word to Speak (Precise Word Timestamp Seek)
+// ============================================================================
+
+test('Word Seek: findWordTimestamp extracts accurate start time for tapped word', async () => {
+  const { findWordTimestamp } = await import('../src/services/trackPlayerService');
+
+  const sampleSegment: DialogueSegment = {
+    id: 1,
+    speaker: 'Alex',
+    speaker_name: 'Alex',
+    start: 0.0,
+    end: 3.5,
+    text_en: 'Hi Sarah, could I get a large iced caramel macchiato please?',
+    text_vi: 'Xin chào Sarah, cho tôi xin một ly macchiato caramel đá lớn được không?',
+    words: [
+      { word: 'Hi', start: 0.11, end: 0.22 },
+      { word: 'Sarah,', start: 0.23, end: 0.61 },
+      { word: 'could', start: 0.91, end: 1.03 },
+      { word: 'iced', start: 1.86, end: 2.1 },
+      { word: 'caramel', start: 2.11, end: 2.48 },
+      { word: 'macchiato', start: 2.5, end: 3.0 },
+      { word: 'please?', start: 3.01, end: 3.51 },
+    ],
+  };
+
+  // Direct word match with punctuation stripped
+  const caramelTimestamp = findWordTimestamp(sampleSegment, 'caramel');
+  assert.ok(caramelTimestamp !== null);
+  assert.equal(caramelTimestamp.start, 2.11);
+  assert.equal(caramelTimestamp.end, 2.48);
+
+  // Word with punctuation attached in text ("macchiato" vs "please?")
+  const pleaseTimestamp = findWordTimestamp(sampleSegment, 'please?');
+  assert.ok(pleaseTimestamp !== null);
+  assert.equal(pleaseTimestamp.start, 3.01);
+
+  // By explicit word index
+  const icedByIndex = findWordTimestamp(sampleSegment, 'iced', 3);
+  assert.ok(icedByIndex !== null);
+  assert.equal(icedByIndex.start, 1.86);
+
+  // Fallback to segment start when word not found
+  const unknownWord = findWordTimestamp(sampleSegment, 'espresso');
+  assert.ok(unknownWord !== null);
+  assert.equal(unknownWord.start, sampleSegment.start);
+});
+
+// ============================================================================
+// TEST SUITE 8: Free Scrolling Protection (Avoid Jumping while User is Scrolling)
+// ============================================================================
+
+test('Free Scroll: shouldAutoScroll pauses auto-jump when user is interacting', async () => {
+  const { shouldAutoScroll } = await import('../src/services/trackPlayerService');
+
+  // Normal playback without user interaction -> allow auto-scroll
+  assert.equal(shouldAutoScroll(false, 'player', true), true);
+
+  // When user is dragging/scrolling -> BLOCK auto-scroll so screen never jumps
+  assert.equal(shouldAutoScroll(true, 'player', true), false);
+
+  // In library or study tabs -> do not auto-scroll
+  assert.equal(shouldAutoScroll(false, 'library', true), false);
+  assert.equal(shouldAutoScroll(false, 'study', true), false);
+
+  // Empty segments -> do not auto-scroll
+  assert.equal(shouldAutoScroll(false, 'player', false), false);
+});
+
